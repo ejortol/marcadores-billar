@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mando SURVIVAL</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+        body { background: #05070a; color: #c8d8e8; font-family: 'Segoe UI', sans-serif; padding: 12px; min-height: 100vh; }
+        #st { font-size: .78rem; text-align: center; margin-bottom: 8px; color: #ffcc00; padding: 4px; border-radius: 4px; }
+        .panel { display: none; }
+
+        .sec-title { font-size: .72rem; letter-spacing: 2px; color: #7090b0; text-transform: uppercase; text-align: center; margin: 14px 0 8px; border-top: 1px solid #141c2a; padding-top: 10px; font-weight: 700; }
+        .cfg-lbl   { font-size: .72rem; color: #7090b0; margin: 8px 0 3px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        input[type=text], input[type=number] {
+            background: #0a0e18; border: 1px solid #1e2a3e; color: #ddeeff;
+            padding: 10px 12px; width: 100%; border-radius: 6px; font-size: .93rem; margin-bottom: 2px;
+        }
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+        .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+
+        .btn {
+            border: none; padding: 13px; border-radius: 9px;
+            font-size: .93rem; font-weight: 700; width: 100%; color: white;
+            cursor: pointer; text-transform: uppercase; margin-top: 7px;
+            transition: filter .1s, transform .1s; letter-spacing: .5px;
+        }
+        .btn:active { filter: brightness(.72); transform: scale(.97); }
+        .btn-blue   { background: #0050cc; }
+        .btn-green  { background: #145c2a; }
+        .btn-orange { background: #8a3e08; }
+        .btn-red    { background: #880808; }
+        .btn-yellow { background: #604808; color: #f0d060; }
+        .btn-teal   { background: #083838; border: 1px solid #0a5050; color: #40b0b0; }
+        .btn-sec    { background: #2C2966; }
+        .btn-rein   { background: #4B251C; }
+        .btn-big    { font-size: 1.35rem; padding: 20px; margin-top: 14px; }
+
+        /* Botones rápidos de duración */
+        .dur-btns { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+        .dur-btn {
+            flex: 1; min-width: 55px;
+            border: 1px solid #1e3050; background: #0a1428; color: #6090c0;
+            padding: 8px 4px; border-radius: 7px; font-size: .78rem; font-weight: 700;
+            cursor: pointer; text-align: center; transition: all .15s;
+        }
+        .dur-btn:active { background: #0050cc; color: white; border-color: #2288ee; }
+        .dur-btn.sel   { background: #0050cc; color: white; border-color: #2288ee; }
+
+        .crono-sec { background: #07090f; border: 1px solid #141c28; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+        .crono-sec-title { font-size: 1rem; letter-spacing: 2px; color: #6080a0; text-transform: uppercase; text-align: center; margin-bottom: 7px; font-weight: 700; }
+        .crono-disp { background: #000; border: 2px solid #0c1830; border-radius: 8px; text-align: center; padding: 6px 0; margin-bottom: 7px; }
+        .cn { font-size: 2.8rem; font-weight: 900; font-family: monospace; line-height: 1; }
+        .cn-gold  { color: #ffcc00; }
+        .cn-green { color: #22cc66; }
+        .cn-amber { color: #f0a020; }
+        .cn-red   { color: #e03030; animation: bl .6s infinite; }
+        @keyframes bl { 0%,100%{opacity:1}50%{opacity:.3} }
+        .cn-sublbl { font-size: .65rem; color: #506070; letter-spacing: 2px; margin-top: 2px; font-weight: 600; }
+        .btn-r2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .btn-r2 .btn { margin: 0; font-size: .82rem; padding: 12px 4px; }
+
+        .descanso-sec { background: #080e1a; border: 2px solid #1a4070; border-radius: 10px; padding: 12px; margin-bottom: 8px; text-align: center; display: none; }
+        .descanso-sec-title { font-size: .7rem; color: #6090c0; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; font-weight: 700; }
+        #mando-descanso-timer { font-size: 3rem; font-family: monospace; color: #ffcc00; font-weight: 900; margin-bottom: 8px; }
+
+        .t-strip { background: #060810; border: 1px solid #101828; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+        .ts-lbl { font-size: 1rem; color: #607080; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; }
+        .ts-nom { font-size: 1.4rem; font-weight: 900; color: #ffcc00; }
+
+        #sg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+        .sb { border: 2px solid #101620; border-radius: 8px; padding: 8px 6px; text-align: center; transition: all .2s; }
+        .sb .jn { font-size: .62rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 2px; }
+        .sb .jp { font-size: 2.6rem; font-weight: 900; line-height: 1.1; }
+        .sb .jm { font-size: .58rem; margin-top: 2px; }
+        .sb .tb { display: flex; gap: 3px; justify-content: center; margin-top: 5px; }
+        .sb .tp { width: 14px; height: 5px; background: #180000; border-radius: 2px; }
+        .sb .tp.on { background: #ffcc00; box-shadow: 0 0 3px #ffcc00; }
+        .sb.elim { opacity: .25; pointer-events: none; }
+        .sb.pend { animation: pr .9s infinite; }
+        @keyframes pr { 0%,100%{box-shadow:0 0 4px rgba(184,16,16,.2)}50%{box-shadow:0 0 14px rgba(184,16,16,.75)} }
+        .sb.ac-activo   { background:#fff; border-color:#2288ee; box-shadow:0 0 10px rgba(34,136,238,.3); }
+        .sb.ac-activo .jn { color:#2a5a9a; } .sb.ac-activo .jp { color:#0a4a96; } .sb.ac-activo .jm { color:#5a80b0; }
+        .sb.ac-inactivo { background:#0a1830; border-color:#1a3060; }
+        .sb.ac-inactivo .jn { color:#6080a0; } .sb.ac-inactivo .jp { color:#fff; } .sb.ac-inactivo .jm { color:#4a6888; }
+        .sb.bd-activo   { background:#f5d020; border-color:#f0c040; box-shadow:0 0 10px rgba(240,192,64,.35); }
+        .sb.bd-activo .jn { color:#2a5a9a; } .sb.bd-activo .jp { color:#0a3a80; } .sb.bd-activo .jm { color:#3a6aaa; }
+        .sb.bd-inactivo { background:#0a1830; border-color:#1a3060; }
+        .sb.bd-inactivo .jn { color:#806020; } .sb.bd-inactivo .jp { color:#f0c040; } .sb.bd-inactivo .jm { color:#604a18; }
+        .jp.lo { color:#e03030!important; }
+
+        .acc { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+        .acc .btn { margin: 0; padding: 12px 4px; font-size: .82rem; }
+        .btn-car { background: #0050cc; font-size: 1.25rem; aspect-ratio: 1; padding: 0; }
+        .btn-nxt { background: #145c2a; font-size: 1.05rem; aspect-ratio: 1; padding: 0; }
+
+        .seg2-sec { background: #050810; border: 1px solid #0a1420; border-radius: 10px; padding: 10px; margin-bottom: 8px; display: none; }
+        .seg2-title { font-size: .68rem; letter-spacing: 2px; color: #6080a0; text-transform: uppercase; text-align: center; margin-bottom: 7px; font-weight: 700; }
+
+        #modal-firmas { position: fixed; inset: 0; background: #05070a; z-index: 1000; padding: 14px; overflow-y: auto; display: none; flex-direction: column; }
+        .f-tit { color: #ffcc00; font-size: 1.02rem; font-weight: bold; text-align: center; margin-bottom: 10px; }
+        .cv-wrap { background: white; border-radius: 10px; padding: 5px; margin: 0 auto 10px; width: 290px; }
+        canvas { background: white; touch-action: none; border: 1px solid #ddd; display: block; width: 280px; height: 200px; }
+        .f-row { display: flex; gap: 7px; }
+        .f-row .btn { flex: 1; padding: 13px; margin: 0; }
+    </style>
+</head>
+<body>
+
+<div id="st">Conectando…</div>
+
+<!-- CONFIG -->
+<div id="config-panel" class="panel">
+    <div style="text-align:center;color:#ffcc00;font-weight:900;letter-spacing:3px;font-size:1.3rem;margin-bottom:10px">CONFIGURACION SURVIVAL</div>
+
+    <div class="cfg-lbl">Club</div>
+    <input type="text" id="cfg-club" value="Club Billar 3 Bandas">
+    <div class="cfg-lbl">Arbitro</div>
+    <input type="text" id="cfg-arbitro" value="EL ARBITRO">
+
+    <div class="sec-title">JUGADORES — ORDEN 1a PARTE</div>
+    <div class="row2">
+        <div><div class="cfg-lbl" style="margin-top:0">Turno 1</div><input type="text" id="cfg-j0" value="JUGADOR A"></div>
+        <div><div class="cfg-lbl" style="margin-top:0">Turno 2</div><input type="text" id="cfg-j1" value="JUGADOR B"></div>
+        <div><div class="cfg-lbl" style="margin-top:0">Turno 3</div><input type="text" id="cfg-j2" value="JUGADOR C"></div>
+        <div><div class="cfg-lbl" style="margin-top:0">Turno 4</div><input type="text" id="cfg-j3" value="JUGADOR D"></div>
+    </div>
+
+    <div class="sec-title">DURACION DE CADA TIEMPO (minutos)</div>
+    <input type="number" id="cfg-minutos" value="45" min="1" max="60"
+           style="text-align:center;font-size:1.4rem;font-weight:900;color:#ffcc00;background:#060c18;border:2px solid #1e3050;"
+           oninput="syncDurBtn(this.value)">
+    <!-- Botones rápidos -->
+    <div class="dur-btns">
+        <button class="dur-btn" onclick="setDur(2)">2 min</button>
+        <button class="dur-btn" onclick="setDur(5)">5 min</button>
+        <button class="dur-btn" onclick="setDur(10)">10 min</button>
+        <button class="dur-btn" onclick="setDur(20)">20 min</button>
+        <button class="dur-btn sel" onclick="setDur(45)">45 min</button>
+    </div>
+    <div style="font-size:.62rem;color:#3a5060;text-align:center;margin-top:4px">
+        Cada tiempo dura este número de minutos · Para testear usa 2 o 5 min
+    </div>
+
+    <div class="row2" style="margin-top:10px">
+        <div><div class="cfg-lbl">Crono disparo (s)</div><input type="number" id="cfg-crono" value="40" min="5" max="120"></div>
+        <div><div class="cfg-lbl">Time-outs</div><input type="number" id="cfg-tos" value="3" min="0" max="5"></div>
+    </div>
+    <button class="btn btn-blue btn-big" onclick="startPartida()">EMPEZAR PARTIDA</button>
+</div>
+
+<!-- GAME -->
+<div id="game-panel" class="panel">
+
+    <div class="descanso-sec" id="mando-descanso">
+        <div class="descanso-sec-title">DESCANSO — 2a PARTE A CONTINUACION</div>
+        <div id="mando-descanso-timer">05:00</div>
+        <button class="btn btn-blue" style="padding:14px;font-size:1rem;margin:0" onclick="snd('saltar_descanso')">SALTAR DESCANSO</button>
+    </div>
+
+    <!-- Crono partido -->
+    <div class="crono-sec">
+        <div class="crono-sec-title">TIEMPO DE PARTIDO</div>
+        <div class="crono-disp">
+            <div id="crono45" class="cn cn-gold">45:00</div>
+            <div class="cn-sublbl" id="crono45-sub">CRONOMETRO PARTIDO · 45 MIN</div>
+        </div>
+        <div class="btn-r2">
+            <button class="btn btn-green" id="btn-tp" onclick="snd('toggle_partido')">INICIAR</button>
+            <button class="btn btn-rein"  onclick="snd('reiniciar_partido')">REINICIAR</button>
+        </div>
+    </div>
+
+    <!-- Crono disparo -->
+    <div class="crono-sec">
+        <div class="crono-sec-title">CRONO DISPARO</div>
+        <div class="crono-disp">
+            <div id="crono40" class="cn cn-green">40</div>
+            <div class="cn-sublbl">SEGUNDOS PARA TIRAR</div>
+        </div>
+        <div class="btn-r2">
+            <button class="btn btn-blue"   id="btn-tc" onclick="snd('toggle_crono')">INICIO</button>
+            <button class="btn btn-yellow" onclick="snd('reset_crono')">RESET</button>
+        </div>
+    </div>
+
+    <!-- Turno -->
+    <div class="t-strip">
+        <div><div class="ts-lbl">TURNO ACTIVO</div><div class="ts-nom" id="t-nom">—</div></div>
+        <div style="text-align:right">
+            <div class="ts-lbl" id="t-parte">1a PARTE</div>
+            <div class="ts-lbl">INNING <span id="t-inn" style="color:#ffcc00;font-size:1.2rem">1</span></div>
+        </div>
+    </div>
+
+    <!-- Marcador -->
+    <div id="sg">
+        <div class="sb ac-activo"   id="sb-0"><div class="jn" id="sn-0">J.A</div><div class="jp" id="sp-0">30</div><div class="jm" id="sm-0">Turno 1</div><div class="tb" id="st-0"><div class="tp on"></div><div class="tp on"></div><div class="tp on"></div></div></div>
+        <div class="sb bd-inactivo" id="sb-1"><div class="jn" id="sn-1">J.B</div><div class="jp" id="sp-1">30</div><div class="jm" id="sm-1">Turno 2</div><div class="tb" id="st-1"><div class="tp on"></div><div class="tp on"></div><div class="tp on"></div></div></div>
+        <div class="sb ac-inactivo" id="sb-2"><div class="jn" id="sn-2">J.C</div><div class="jp" id="sp-2">30</div><div class="jm" id="sm-2">Turno 3</div><div class="tb" id="st-2"><div class="tp on"></div><div class="tp on"></div><div class="tp on"></div></div></div>
+        <div class="sb bd-inactivo" id="sb-3"><div class="jn" id="sn-3">J.D</div><div class="jp" id="sp-3">30</div><div class="jm" id="sm-3">Turno 4</div><div class="tb" id="st-3"><div class="tp on"></div><div class="tp on"></div><div class="tp on"></div></div></div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="acc">
+        <button class="btn btn-car" onclick="snd('carambola')">CARAMBOLA</button>
+        <button class="btn btn-nxt" onclick="snd('next')">SIGUIENTE TURNO</button>
+        <button class="btn btn-orange" onclick="snd('to')">TIME OUT</button>
+        <button class="btn btn-yellow" onclick="snd('minus')">RESTAR 1</button>
+        <button class="btn btn-sec"    onclick="snd('undo')">DESHACER</button>
+        <button class="btn btn-sec"    onclick="openFirmas()">ACTA / FIRMAS</button>
+    </div>
+
+    <!-- 2ª parte -->
+    <div class="seg2-sec" id="sec2">
+        <div class="seg2-title">GESTION SEGUNDA PARTE</div>
+        <button class="btn btn-teal" id="btn-arrancar2" onclick="snd('inicio_segunda')" style="padding:14px;font-size:.96rem;margin:0">ARRANCAR 2a PARTE</button>
+        <div style="font-size:.6rem;color:#3a5060;text-align:center;margin-top:5px">Nombres invertidos · Puntos conservados + 30</div>
+    </div>
+
+    <button class="btn btn-red" style="font-size:.76rem;margin-top:4px" onclick="snd('reset')">RESET COMPLETO</button>
+</div>
+
+<!-- FIRMAS -->
+<div id="modal-firmas">
+    <div class="f-tit" id="f-tit">Firma 1/5</div>
+    <div class="cv-wrap"><canvas id="cv-firma" width="280" height="200"></canvas></div>
+    <div class="f-row">
+        <button class="btn btn-rein" onclick="limpiarCv()" style="margin:0">Limpiar</button>
+        <button class="btn btn-blue" onclick="nextFirma()"  style="margin:0">Siguiente</button>
+    </div>
+    <button class="btn btn-red" style="margin-top:8px" onclick="cerrarFirmas()">Cancelar</button>
+</div>
+
+<script>
+const SLOT_DERECHA = new Set([1, 3]);
+
+let p = null, c = null;
+const code = new URLSearchParams(window.location.search).get('code');
+
+let state = {
+    pts:[30,30,30,30], noms:['A','B','C','D'], tos:[3,3,3,3],
+    slotActual:0, mitad:1, tActual:0, inning:1,
+    tiempoPartido:2700, tiempoCrono:40, segCrono:40,
+    segParte:2700,
+    elim1:[false,false,false,false], elim2:[false,false,false,false],
+    pendElim:[false,false,false,false],
+    pausaPartido:true, pausaCrono:true,
+    descanso:false, tDescanso:300,
+    esperandoFinRonda:false,
+};
+
+let heartbeatInterval=null, reconnectTimer=null, isConnecting=false;
+
+function nomMostrado(slot){
+    // En 2a parte los arrays ya están físicamente invertidos, no hace falta inversión lógica
+    return state.noms ? state.noms[slot] : ('J'+(slot+1));
+}
+
+/* ── Botones de duración rápida ── */
+function setDur(min){
+    document.getElementById('cfg-minutos').value = min;
+    document.querySelectorAll('.dur-btn').forEach(b=>{
+        b.classList.toggle('sel', b.textContent.trim() === min+' min');
+    });
+}
+function syncDurBtn(val){
+    const min = parseInt(val)||45;
+    document.querySelectorAll('.dur-btn').forEach(b=>{
+        b.classList.toggle('sel', b.textContent.trim() === min+' min');
+    });
+}
+
+/* ── Conexión ── */
+function connect(){
+    if(isConnecting) return;
+    isConnecting=true; stopHeartbeat();
+    if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}
+    if(p){try{p.destroy();}catch(e){} p=null; c=null;}
+
+    p=new Peer(undefined,{
+        config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]}
+    });
+    p.on('open',()=>{
+        isConnecting=false;
+        setStatus('Conectando al marcador…','#f0a020');
+        c=p.connect('survival-'+code,{reliable:true});
+        c.on('open',()=>{
+            setStatus('CONECTADO','#22cc66');
+            // Si la partida ya estaba en curso, no volver a mostrar la config
+            if(!state.iniciada){
+                document.getElementById('config-panel').style.display='block';
+            }
+            startHeartbeat();
+        });
+        c.on('data',d=>{
+            if(d.type==='pong') return;
+            if(d.type==='force_reconnect'){window.location.href=window.location.pathname;return;}
+            if(d.type==='state'){
+                state=d.state;
+                if(state.iniciada){
+                    document.getElementById('config-panel').style.display='none';
+                    document.getElementById('game-panel').style.display='block';
+                    // Actualizar subtítulo con duración real
+                    const min=Math.round((state.segParte||2700)/60);
+                    const sub=document.getElementById('crono45-sub');
+                    if(sub) sub.innerText='CRONOMETRO PARTIDO · '+min+' MIN';
+                }
+                renderMando();
+            }
+        });
+        c.on('close',()=>scheduleReconnect('Desconectado'));
+        c.on('error',()=>scheduleReconnect('Error conexion'));
+    });
+    p.on('disconnected',()=>{isConnecting=false; p.reconnect();});
+    p.on('error',(err)=>{
+        isConnecting=false;
+        const isPeerUnavailable = err.type==='peer-unavailable';
+        scheduleReconnect(isPeerUnavailable?'Esperando marcador TV…':'Error P2P', isPeerUnavailable?5000:4000);
+    });
+}
+
+function scheduleReconnect(msg,delay=3000){
+    setStatus(msg+' — reintentando…','#e03030');
+    stopHeartbeat(); isConnecting=false;
+    if(reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer=setTimeout(connect,delay);
+}
+function setStatus(msg,color){ const el=document.getElementById('st'); el.innerText=msg; el.style.color=color; }
+function startHeartbeat(){
+    stopHeartbeat();
+    // Intervalo corto (8s) para mantener viva la conexión WebRTC en periodos de inactividad
+    heartbeatInterval=setInterval(()=>{
+        if(c&&c.open){try{c.send({type:'ping'});}catch(e){scheduleReconnect('Heartbeat fallo');}}
+        else scheduleReconnect('Sin conexion');
+    },8000);
+}
+function stopHeartbeat(){ if(heartbeatInterval){clearInterval(heartbeatInterval);heartbeatInterval=null;} }
+function snd(cmd,val){ if(c&&c.open)try{c.send({type:'cmd',cmd,val});}catch(e){} }
+
+function startPartida(){
+    const minutos = parseInt(document.getElementById('cfg-minutos').value)||45;
+    const cfg={
+        club:    document.getElementById('cfg-club').value,
+        arbitro: document.getElementById('cfg-arbitro').value,
+        noms:[
+            document.getElementById('cfg-j0').value,
+            document.getElementById('cfg-j1').value,
+            document.getElementById('cfg-j2').value,
+            document.getElementById('cfg-j3').value,
+        ],
+        segParte:  minutos * 60,
+        segCrono:  parseInt(document.getElementById('cfg-crono').value)||40,
+        tos: Array(4).fill(parseInt(document.getElementById('cfg-tos').value)||3),
+    };
+    // Actualizar subtítulo
+    const sub=document.getElementById('crono45-sub');
+    if(sub) sub.innerText='CRONOMETRO PARTIDO · '+minutos+' MIN';
+    snd('start',cfg);
+}
+
+function renderMando(){
+    const slot=state.slotActual||0;
+    const md=document.getElementById('mando-descanso');
+    if(md) md.style.display=state.descanso?'block':'none';
+    if(state.descanso&&state.tDescanso!==undefined){
+        const m=Math.floor(state.tDescanso/60),s=state.tDescanso%60;
+        const el=document.getElementById('mando-descanso-timer');
+        if(el) el.innerText=m+':'+(s<10?'0'+s:s);
+    }
+
+    // Desactivar ARRANCAR 2A PARTE una vez iniciada
+    const btnArr = document.getElementById('btn-arrancar2');
+    if(btnArr){
+        const arrancada = state.mitad === 2;
+        btnArr.disabled = arrancada;
+        btnArr.style.opacity = arrancada ? '0.3' : '';
+        btnArr.style.pointerEvents = arrancada ? 'none' : '';
+        btnArr.innerText = arrancada ? '2a PARTE EN CURSO' : 'ARRANCAR 2a PARTE';
+    }
+    const s2=document.getElementById('sec2');
+    if(s2) s2.style.display=(state.descanso||state.mitad===2||state.esperandoFinRonda)?'block':'none';
+
+    document.getElementById('t-nom').innerText=nomMostrado(slot);
+    document.getElementById('t-parte').innerText=(state.mitad===1?'1a':'2a')+' PARTE'+(state.esperandoFinRonda?' (fin ronda)':'');
+    document.getElementById('t-inn').innerText=state.inning||1;
+
+    // Crono partido
+    const mP=Math.floor((state.tiempoPartido||0)/60),sP=(state.tiempoPartido||0)%60;
+    const c45=document.getElementById('crono45');
+    c45.innerText=mP+':'+(sP<10?'0'+sP:sP);
+    c45.className='cn '+(state.tiempoPartido<120?'cn-red':state.pausaPartido?'cn-gold':'cn-green');
+    const btp=document.getElementById('btn-tp');
+    if(btp) btp.innerText=state.pausaPartido?'INICIAR':'PAUSAR';
+
+    // Crono disparo
+    const tc=state.tiempoCrono||0;
+    const c40=document.getElementById('crono40');
+    c40.innerText=tc;
+    c40.className='cn '+(tc<=5?'cn-red':tc<=15?'cn-amber':'cn-green');
+    const btc=document.getElementById('btn-tc');
+    if(btc) btc.innerText=state.pausaCrono?'INICIO':'PAUSA';
+
+    // Cards
+    for(let i=0;i<4;i++){
+        const elim=(state.mitad===1)?(state.elim1&&state.elim1[i]):(state.elim2&&state.elim2[i]);
+        const pend=state.pendElim&&state.pendElim[i];
+        const btn=document.getElementById('sb-'+i);
+        const pts=state.pts?state.pts[i]:30;
+        const esAct=(i===slot&&!elim);
+        const esDer=SLOT_DERECHA.has(i);
+        let cls='sb';
+        if(elim)       cls+=' elim '+(esDer?'bd-inactivo':'ac-inactivo');
+        else if(pend)  cls+=' pend '+(esDer?'bd-inactivo':'ac-inactivo');
+        else if(esAct) cls+=' '+(esDer?'bd-activo':'ac-activo');
+        else           cls+=' '+(esDer?'bd-inactivo':'ac-inactivo');
+        btn.className=cls;
+        document.getElementById('sn-'+i).innerText=nomMostrado(i);
+        const pEl=document.getElementById('sp-'+i);
+        pEl.innerText=pts; pEl.className='jp'+(pts<=0?' lo':'');
+        document.getElementById('sm-'+i).innerText=elim?'ELIMINADO':(esAct?('Serie: '+(state.tActual||0)):'Turno '+(i+1));
+        const tosEl=document.getElementById('st-'+i);
+        if(tosEl&&state.tos){
+            const pips=tosEl.children;
+            for(let d=0;d<pips.length;d++) pips[d].className='tp'+(d<(state.tos[i]||0)?' on':'');
+        }
+    }
+}
+
+// Firmas
+let step=0,firmas=['','','','',''],ctx=null,drawing=false;
+function openFirmas(){ step=0;firmas=['','','','',''];document.getElementById('modal-firmas').style.display='flex';setupCv();updateTit(); }
+function cerrarFirmas(){ document.getElementById('modal-firmas').style.display='none'; }
+function updateTit(){
+    const n=state.noms||['A','B','C','D'];
+    document.getElementById('f-tit').innerText=(step+1)+'/5 — '+(step<4?('Firma de '+(n[step]||'J'+(step+1))):'Firma del Arbitro');
+}
+function nextFirma(){
+    firmas[step]=document.getElementById('cv-firma').toDataURL();
+    step++;
+    if(step<5){limpiarCv();updateTit();}
+    else{document.getElementById('modal-firmas').style.display='none';generarActa();}
+}
+function setupCv(){
+    const cv=document.getElementById('cv-firma');
+    cv.width=280;cv.height=200;
+    ctx=cv.getContext('2d');ctx.lineWidth=2;ctx.strokeStyle='black';
+    const gP=e=>{
+        const r=cv.getBoundingClientRect();
+        const sx=cv.width/r.width,sy=cv.height/r.height;
+        const cx=e.touches?e.touches[0].clientX:e.clientX;
+        const cy=e.touches?e.touches[0].clientY:e.clientY;
+        return{x:(cx-r.left)*sx,y:(cy-r.top)*sy};
+    };
+    cv.ontouchstart=cv.onmousedown=e=>{drawing=true;const pp=gP(e);ctx.beginPath();ctx.moveTo(pp.x,pp.y);};
+    cv.ontouchmove=cv.onmousemove=e=>{if(!drawing)return;e.preventDefault();const pp=gP(e);ctx.lineTo(pp.x,pp.y);ctx.stroke();};
+    cv.ontouchend=cv.onmouseup=()=>{drawing=false;};
+}
+function limpiarCv(){ if(ctx)ctx.clearRect(0,0,280,200); }
+
+function generarActa(){
+    const s=state,noms=s.noms||['A','B','C','D'],club=s.club||'Club Billar',arb=s.arbitro||'EL ARBITRO';
+    const fls=hist=>{
+        let h='';
+        for(let r=0;r<Math.max(hist?hist.length:0,15);r++){
+            const e=hist&&hist[r];
+            h+=`<tr>
+                <td style="border:1px solid #ccc;padding:1px 3px;font-size:.64rem">${r+1}</td>
+                <td style="border:1px solid #ccc;padding:1px 3px;font-size:.64rem">${e?e.car:'–'}</td>
+                <td style="border:1px solid #ccc;padding:1px 3px;font-size:.64rem">${e?e.pts:'–'}</td>
+                <td style="border:1px solid #ccc;padding:1px 3px;font-size:.64rem">${e?(e.mitad===1?'1a':'2a'):'–'}</td>
+            </tr>`;
+        }
+        return h;
+    };
+    const res=noms.map((nom,i)=>{
+        const ent=s.hist&&s.hist[i]?Math.max(s.hist[i].length,1):1,car=s.car?s.car[i]:0;
+        const et=(s.elim2&&s.elim2[i])?'ELIMINADO':(s.elim1&&s.elim1[i]?'(elim.1a)':'');
+        return `<table style="width:100%;border-collapse:collapse;font-size:.72rem">
+            <tr><th colspan="5" style="background:#222;color:#fff;padding:3px">${nom} ${et}</th></tr>
+            <tr><th>PTS</th><th>CAR</th><th>ENT</th><th>PROM</th><th>S.M.</th></tr>
+            <tr><td>${s.pts?s.pts[i]:30}</td><td>${car}</td><td>${ent}</td><td>${(car/ent).toFixed(3)}</td><td>${s.max?s.max[i]:0}</td></tr>
+        </table>`;
+    }).join('');
+    const tabs=noms.map((nom,i)=>`<div style="width:100%">
+        <div style="background:#222;color:#fff;text-align:center;padding:3px;font-size:.7rem;font-weight:bold;text-transform:uppercase;word-break:break-word">${nom}</div>
+        <table style="width:100%;border-collapse:collapse">
+            <thead><tr>
+                <th style="border:1px solid #ccc;background:#eee;padding:1px 2px;font-size:.63rem">E</th>
+                <th style="border:1px solid #ccc;background:#eee;padding:1px 2px;font-size:.63rem">CAR</th>
+                <th style="border:1px solid #ccc;background:#eee;padding:1px 2px;font-size:.63rem">PTS</th>
+                <th style="border:1px solid #ccc;background:#eee;padding:1px 2px;font-size:.63rem">½</th>
+            </tr></thead>
+            <tbody>${fls(s.hist?s.hist[i]:[])}</tbody>
+        </table></div>`).join('');
+    const firsJ=noms.map((n,i)=>`
+        <div style="text-align:center;width:22%;border-top:1px solid black;padding-top:4px;font-size:.73rem;font-weight:bold">
+            <img src="${firmas[i]||''}" style="width:100%;height:48px;object-fit:contain;display:block;margin-bottom:3px">${n}
+        </div>`).join('');
+    const firArb=`<div style="text-align:center;width:30%;border-top:2px solid black;padding-top:4px;font-size:.73rem;font-weight:bold">
+        <img src="${firmas[4]||''}" style="width:100%;height:48px;object-fit:contain;display:block;margin-bottom:3px">${arb}
+    </div>`;
+    const win=window.open('','_blank');
+    if(!win){alert('Permite ventanas emergentes');return;}
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Acta – ${club}</title>
+    <style>
+        @media print{.no-print{display:none!important}@page{size:A4 portrait;margin:.8cm}}
+        body{font-family:'Segoe UI',sans-serif;margin:0;padding:0;color:#000}
+        .no-print{background:#111;padding:14px;text-align:center;display:flex;gap:10px;justify-content:center}
+        .cnt{width:19cm;margin:0 auto;padding:8px}
+        table{border-collapse:collapse}th,td{border:1px solid #bbb;padding:2px 4px;text-align:center}th{background:#f0f0f0}
+    </style></head><body>
+    <div class="no-print">
+        <button onclick="window.print()" style="background:#0050cc;color:#fff;border:none;padding:16px 40px;border-radius:9px;font-size:1.2rem;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:1px">IMPRIMIR</button>
+        <button onclick="window.close()" style="background:#880808;color:#fff;border:none;padding:16px 36px;border-radius:9px;font-size:1.2rem;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:1px">CERRAR</button>
+    </div>
+    <div class="cnt">
+        <div style="text-align:center;border-bottom:2px solid black;margin-bottom:8px;padding-bottom:5px">
+            <h1 style="font-size:1.4rem;text-transform:uppercase">${club}</h1>
+            <h2 style="font-size:.92rem">ACTA OFICIAL · SURVIVAL 3 BANDAS · 4 JUGADORES</h2>
+            <div style="font-size:.77rem;color:#555;display:flex;justify-content:center;gap:22px;margin-top:3px">
+                <span>Fecha: <strong>${new Date().toLocaleDateString('es-ES')}</strong></span>
+                <span>Arbitro: <strong>${arb}</strong></span>
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px">${res}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:14px">${tabs}</div>
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-top:30px">${firsJ}</div>
+        <div style="display:flex;justify-content:center;margin-top:20px">${firArb}</div>
+    </div>
+    <script>window.onload=()=>{setTimeout(()=>window.print(),600);};<\/script>
+    </body></html>`);
+    win.document.close();
+}
+
+connect();
+</script>
+</body>
+</html>
