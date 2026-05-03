@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Control Remoto — Círculo de Amistad</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --azul:#0d1f3c; --azul2:#142848; --azul3:#1a3360;
+  --dor:#b8922a;  --dor2:#d4aa44;  --dor3:#e8c96a;
+  --crema:#f0e8d5; --rojo:#c0392b; --verde:#1a7a4a;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  min-height:100dvh;
+  background:var(--azul);
+  background-image:
+    radial-gradient(ellipse at 20% 30%,rgba(26,51,96,.9) 0%,transparent 55%),
+    radial-gradient(ellipse at 80% 70%,rgba(10,25,55,.8) 0%,transparent 55%);
+  display:flex;flex-direction:column;align-items:center;
+  font-family:'Montserrat',sans-serif;color:var(--crema);
+  padding-bottom:36px;
+}
+
+/* ── HEADER ── */
+.header{
+  width:100%;background:rgba(5,12,28,.85);
+  border-bottom:2px solid rgba(184,146,42,.3);
+  padding:10px 16px;display:flex;align-items:center;gap:12px;
+  flex-shrink:0;
+}
+.header img{height:42px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));}
+.header-fb{width:42px;height:42px;border-radius:50%;background:var(--azul3);border:2px solid var(--dor);display:flex;align-items:center;justify-content:center;font-size:.36rem;font-weight:700;color:var(--dor2);text-align:center;line-height:1.3;text-transform:uppercase;}
+.header-club{font-family:'Playfair Display',serif;font-size:.88rem;font-weight:700;color:var(--dor2);letter-spacing:1px;}
+.header-sub{font-size:.5rem;letter-spacing:3px;text-transform:uppercase;color:rgba(240,232,213,.38);margin-top:1px;}
+.gold-line{width:100%;height:1px;background:linear-gradient(to right,transparent,var(--dor),var(--dor2),var(--dor),transparent);flex-shrink:0;}
+
+/* ── STATUS ── */
+.status-bar{
+  width:calc(100% - 24px);max-width:500px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 14px;border-radius:20px;
+  background:rgba(5,12,28,.5);border:1px solid rgba(184,146,42,.2);
+  font-size:.58rem;letter-spacing:2px;text-transform:uppercase;margin-top:10px;
+}
+.sdot{width:9px;height:9px;border-radius:50%;background:#444;display:inline-block;margin-right:7px;transition:background .3s;}
+.sdot.connected{background:var(--verde);box-shadow:0 0 8px rgba(26,122,74,.7);}
+.sdot.connecting{background:#e67e22;animation:pulse .9s ease-in-out infinite;}
+.sdot.error{background:var(--rojo);}
+@keyframes pulse{0%,100%{opacity:.4;}50%{opacity:1;}}
+.stxt{color:rgba(240,232,213,.45);}
+
+/* ── CARD ── */
+.card{
+  width:calc(100% - 24px);max-width:500px;
+  background:linear-gradient(160deg,var(--azul2),var(--azul));
+  border:1px solid rgba(184,146,42,.35);border-radius:8px;
+  padding:20px;margin-top:10px;position:relative;overflow:hidden;
+}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--dor),var(--dor2),var(--dor),transparent);}
+.card-title{font-family:'Playfair Display',serif;color:var(--dor2);font-size:1.1rem;letter-spacing:2px;margin-bottom:12px;padding-top:4px;text-align:center;}
+.card-sub{font-size:.6rem;letter-spacing:1.5px;color:rgba(240,232,213,.45);text-align:center;margin-bottom:12px;line-height:1.7;}
+
+/* ── INPUTS ── */
+.code-input{
+  width:100%;text-align:center;
+  font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;letter-spacing:8px;
+  color:var(--dor2);background:rgba(0,0,0,.4);
+  border:1px solid rgba(184,146,42,.35);border-radius:6px;padding:12px;
+  outline:none;transition:border-color .2s;
+}
+.code-input:focus{border-color:var(--dor);}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+.field-row.full{grid-template-columns:1fr;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-size:.52rem;letter-spacing:3px;text-transform:uppercase;color:rgba(184,146,42,.6);font-weight:600;}
+.field input,.field select{
+  background:rgba(0,0,0,.35);border:1px solid rgba(184,146,42,.3);
+  border-radius:4px;color:var(--crema);
+  font-family:'Montserrat',sans-serif;font-size:.95rem;font-weight:600;
+  padding:9px 11px;outline:none;transition:border-color .2s;width:100%;
+}
+.field input:focus,.field select:focus{border-color:var(--dor);}
+.field select option{background:var(--azul2);}
+.mode-note{font-size:.62rem;color:rgba(240,232,213,.38);text-align:center;line-height:1.7;white-space:pre-line;margin-top:6px;}
+.sep{height:1px;background:rgba(184,146,42,.2);margin:12px 0;}
+.connect-err{font-size:.68rem;color:#e74c3c;text-align:center;letter-spacing:1.5px;display:none;margin-top:6px;}
+.connect-err.show{display:block;}
+
+/* ── BUTTONS ── */
+.btn-gold{
+  width:100%;padding:13px;border:none;border-radius:5px;
+  background:linear-gradient(135deg,var(--dor),#8a6a12);
+  color:var(--azul);font-family:'Montserrat',sans-serif;
+  font-size:.88rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;cursor:pointer;
+  margin-top:10px;
+}
+.btn-gold:hover{opacity:.88;}
+.btn-gold:disabled{opacity:.4;cursor:not-allowed;}
+.btn-ghost{
+  width:100%;padding:10px;border:1px solid rgba(184,146,42,.35);border-radius:5px;
+  background:transparent;color:var(--crema);
+  font-family:'Montserrat',sans-serif;font-size:.78rem;font-weight:600;
+  letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-top:8px;
+}
+.btn-ghost:hover{background:rgba(184,146,42,.1);}
+.btn-ghost:disabled{opacity:.4;cursor:not-allowed;}
+
+/* ── SCORE ROW ── */
+.scores-row{display:grid;grid-template-columns:1fr auto 1fr;background:linear-gradient(160deg,var(--azul2),var(--azul));border:1px solid rgba(184,146,42,.4);border-radius:6px;overflow:hidden;}
+.sc{padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;transition:background .3s;}
+.sc.act{background:rgba(255,255,255,.06);}
+.sc-name{font-family:'Playfair Display',serif;font-size:.82rem;font-weight:700;color:var(--crema);text-align:center;}
+.sc-score{font-family:'Playfair Display',serif;font-size:2.7rem;font-weight:900;line-height:1;color:var(--crema);}
+.sc-rem{font-size:.52rem;letter-spacing:2px;color:rgba(240,232,213,.32);}
+.sc-div{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 5px;border-left:1px solid rgba(184,146,42,.2);border-right:1px solid rgba(184,146,42,.2);gap:3px;min-width:52px;}
+.sc-inn{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:900;color:var(--dor2);text-align:center;}
+.sc-ilbl{font-size:.45rem;letter-spacing:3px;text-transform:uppercase;color:rgba(184,146,42,.4);text-align:center;}
+
+/* ── TURN BOX ── */
+.turn-box{width:calc(100% - 24px);max-width:500px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 14px;background:rgba(184,146,42,.08);border:1px solid rgba(184,146,42,.25);border-radius:6px;margin-top:10px;text-align:center;}
+.turn-lbl{font-size:.52rem;letter-spacing:4px;text-transform:uppercase;color:rgba(184,146,42,.5);}
+.turn-name{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:var(--dor2);}
+
+/* ── TIMER ── */
+.tmini{display:flex;align-items:center;gap:10px;padding:9px 14px;background:rgba(5,12,28,.5);border:1px solid rgba(184,146,42,.2);border-radius:6px;width:calc(100% - 24px);max-width:500px;margin-top:10px;}
+.tn{font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:var(--crema);min-width:50px;text-align:center;transition:color .3s;}
+.tn.warning{color:#e67e22;}.tn.danger{color:#e74c3c;animation:blink .5s step-end infinite;}
+@keyframes blink{50%{opacity:.3;}}
+.ttrack{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;}
+.tfill{height:100%;background:linear-gradient(to right,var(--dor),var(--dor2));transition:width .9s linear;}
+.tfill.warning{background:linear-gradient(to right,#e67e22,#f39c12);}
+.tfill.danger{background:linear-gradient(to right,#c0392b,#e74c3c);}
+
+/* ── PLAYER CONTROLS ── */
+.pctrl{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:calc(100% - 24px);max-width:500px;margin-top:10px;}
+.pblock{background:linear-gradient(160deg,var(--azul2),var(--azul));border:1px solid rgba(184,146,42,.2);border-radius:8px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;overflow:hidden;transition:border-color .3s;}
+.pblock::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,rgba(184,146,42,.2),transparent);}
+.pblock.act{border-color:var(--dor);}
+.pblock.act::before{background:linear-gradient(to right,transparent,var(--dor),var(--dor2),var(--dor),transparent);}
+.pb-lbl{font-size:.48rem;letter-spacing:2px;text-transform:uppercase;color:rgba(184,146,42,.4);font-weight:600;}
+.pb-name{font-family:'Playfair Display',serif;font-size:.88rem;font-weight:700;color:var(--crema);text-align:center;}
+.pb-score{font-family:'Playfair Display',serif;font-size:2.1rem;font-weight:900;line-height:1;color:var(--crema);}
+.pb-btns{display:flex;gap:7px;width:100%;}
+.pbbtn{flex:1;height:54px;border-radius:6px;border:none;font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;cursor:pointer;transition:transform .12s;display:flex;align-items:center;justify-content:center;-webkit-user-select:none;user-select:none;}
+.pbbtn:active{transform:scale(.88);}
+.pbbtn.m{background:rgba(192,57,43,.12);color:#e74c3c;border:1px solid rgba(192,57,43,.3);}
+.pbbtn.p{background:rgba(184,146,42,.15);color:var(--dor2);border:1px solid rgba(184,146,42,.45);}
+.pbbtn.p:active{background:rgba(184,146,42,.32);}
+.pbbtn.m:active{background:rgba(192,57,43,.28);}
+
+/* ── ACTION GRID ── */
+.slbl{font-size:.52rem;letter-spacing:4px;text-transform:uppercase;color:rgba(184,146,42,.4);font-weight:600;width:calc(100% - 24px);max-width:500px;margin-top:12px;}
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:calc(100% - 24px);max-width:500px;margin-top:6px;}
+.abtn{padding:14px 7px;border-radius:6px;border:1px solid rgba(184,146,42,.28);background:rgba(5,12,28,.4);color:var(--crema);font-family:'Montserrat',sans-serif;font-size:.63rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .14s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.abtn .ic{font-size:1.3rem;}
+.abtn:active{transform:scale(.93);}
+.abtn:hover,.abtn:active{background:rgba(184,146,42,.14);border-color:var(--dor);}
+.abtn.pri{border-color:var(--dor);color:var(--dor2);background:rgba(184,146,42,.1);}
+.abtn.dng{border-color:rgba(192,57,43,.4);color:#e74c3c;}
+.abtn.dng:active{background:rgba(192,57,43,.18);}
+.abtn.full{grid-column:1/-1;}
+
+/* ── FINISH CONFIRM ── */
+#finishOverlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(5,12,28,.93);backdrop-filter:blur(6px);align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:24px;text-align:center;}
+#finishOverlay.show{display:flex;}
+.fo-title{font-family:'Playfair Display',serif;font-size:1.3rem;color:#e74c3c;letter-spacing:2px;}
+.fo-text{font-size:.72rem;letter-spacing:1px;color:rgba(240,232,213,.6);line-height:1.8;}
+.fo-btns{display:flex;gap:10px;width:100%;max-width:320px;}
+.fo-btn{flex:1;padding:12px;border-radius:4px;font-family:'Montserrat',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;}
+.fo-btn.cancel{border:1px solid rgba(184,146,42,.4);background:transparent;color:var(--crema);}
+.fo-btn.confirm{border:1px solid var(--rojo);background:rgba(192,57,43,.15);color:#e74c3c;}
+
+/* ── FIRMA OVERLAY ── */
+#firmaOverlay{
+  display:none;position:fixed;inset:0;z-index:300;
+  background:rgba(5,12,28,.97);
+  flex-direction:column;align-items:center;
+  overflow-y:auto;padding:16px;gap:14px;
+}
+#firmaOverlay.show{display:flex;}
+.firma-title{font-family:'Playfair Display',serif;color:var(--dor2);font-size:1.2rem;letter-spacing:2px;text-align:center;margin-top:8px;}
+.firma-sub{font-size:.65rem;letter-spacing:2px;color:rgba(240,232,213,.5);text-align:center;line-height:1.7;}
+.firma-player-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--crema);text-align:center;}
+.firma-canvas-wrap{
+  width:100%;max-width:460px;
+  background:#fff;border-radius:8px;
+  border:3px solid var(--dor);
+  overflow:hidden;position:relative;
+  touch-action:none;
+}
+.firma-canvas-wrap canvas{display:block;width:100%;touch-action:none;}
+.firma-clear{
+  background:transparent;border:1px solid rgba(240,232,213,.2);
+  color:rgba(240,232,213,.5);font-family:'Montserrat',sans-serif;
+  font-size:.6rem;letter-spacing:2px;text-transform:uppercase;
+  padding:6px 14px;border-radius:4px;cursor:pointer;margin-top:4px;
+  align-self:flex-end;
+}
+.firma-clear:hover{background:rgba(255,255,255,.06);}
+.firma-step{font-size:.6rem;letter-spacing:3px;text-transform:uppercase;color:rgba(184,146,42,.5);text-align:center;}
+.firma-hint{font-size:.62rem;color:rgba(240,232,213,.35);text-align:center;line-height:1.6;}
+
+/* ── DISC ── */
+.disc-btn{width:calc(100% - 24px);max-width:500px;padding:10px;margin-top:10px;border:1px solid rgba(192,57,43,.2);border-radius:4px;background:transparent;color:rgba(231,76,60,.5);font-family:'Montserrat',sans-serif;font-size:.6rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;text-align:center;}
+.disc-btn:hover{background:rgba(192,57,43,.06);}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" style="height:42px;width:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))"><g transform="rotate(-45,100,100)"><rect x="20" y="96" width="160" height="8" rx="4" fill="#8B6340"/><rect x="20" y="96" width="10" height="8" rx="2" fill="#C4A882"/><rect x="170" y="95" width="10" height="10" rx="2" fill="#9B9B9B"/></g><g transform="rotate(45,100,100)"><rect x="20" y="96" width="160" height="8" rx="4" fill="#7A5530"/><rect x="20" y="96" width="10" height="8" rx="2" fill="#B89870"/><rect x="170" y="95" width="10" height="10" rx="2" fill="#8A8A8A"/></g><circle cx="82" cy="100" r="18" fill="#CC2200"/><circle cx="76" cy="93" r="5" fill="rgba(255,255,255,0.35)"/><circle cx="100" cy="100" r="20" fill="#F5F0E0"/><circle cx="96" cy="103" r="2.5" fill="#CC2200"/><circle cx="103" cy="103" r="2.5" fill="#CC2200"/><circle cx="100" cy="97" r="2.5" fill="#CC2200"/><circle cx="118" cy="100" r="18" fill="#E8A800"/><circle cx="112" cy="93" r="5" fill="rgba(255,255,255,0.35)"/><circle cx="82" cy="100" r="18" fill="none" stroke="#1a1a1a" stroke-width="1.5"/><circle cx="100" cy="100" r="20" fill="none" stroke="#1a1a1a" stroke-width="1.5"/><circle cx="118" cy="100" r="18" fill="none" stroke="#1a1a1a" stroke-width="1.5"/></svg>
+  <div>
+    <div class="header-club">Control remoto marcador</div>
+  </div>
+</div>
+<div class="gold-line"></div>
+
+<!-- STATUS -->
+<div class="status-bar">
+  <span><span class="sdot" id="sdot"></span><span class="stxt" id="stxt">Sin conexión</span></span>
+  <span style="color:rgba(184,146,42,.3);font-size:.5rem;letter-spacing:2px;">MANDO</span>
+</div>
+
+<!-- ══ SECCIÓN CONECTAR ══ -->
+<div id="secConnect">
+  <div class="card">
+    <div class="card-title">Conectar al marcador</div>
+    <div class="card-sub">Introduce el código de 6 dígitos<br>que aparece en la pantalla del marcador</div>
+    <input class="code-input" id="codeInput" type="tel" maxlength="6" placeholder="000000" inputmode="numeric">
+    <div class="connect-err" id="connectErr"></div>
+    <button class="btn-gold" id="connectBtn" onclick="connectToHost()">Conectar</button>
+  </div>
+</div>
+
+<!-- ══ SECCIÓN CONFIGURAR ══ -->
+<div id="secSetup" style="display:none;width:100%;">
+  <div class="card">
+    <div class="card-title">⚙ Configurar partida</div>
+    <div class="field-row full">
+      <div class="field">
+        <label>Modalidad</label>
+        <select id="cfgMode" onchange="updateNote()">
+          <option value="carambolas">Por carambolas — primero en llegar</option>
+          <option value="entradas">Por entradas — más carambolas gana</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Carambolas objetivo</label><input type="number" id="cfgCarambolas" value="30" min="1" max="999" oninput="updateNote()"></div>
+      <div class="field"><label>Máximo entradas</label><input type="number" id="cfgEntradas" value="40" min="1" max="999" oninput="updateNote()"></div>
+    </div>
+    <div class="field-row full" style="margin-top:10px;">
+      <div class="field"><label>Tiempo por turno (seg)</label><input type="number" id="cfgTimer" value="40" min="10" max="300" oninput="updateNote()"></div>
+    </div>
+    <div class="sep"></div>
+    <div class="field-row">
+      <div class="field"><label>Jugador 1</label><input type="text" id="cfgName1" value="Jugador 1" maxlength="24"></div>
+      <div class="field"><label>Jugador 2</label><input type="text" id="cfgName2" value="Jugador 2" maxlength="24"></div>
+    </div>
+    <div class="field-row full" style="margin-top:10px;">
+      <div class="field"><label>Temporada</label><input type="text" id="cfgTemp" value="2025-2026" maxlength="20"></div>
+    </div>
+    <div class="field-row full" style="margin-top:10px;">
+      <div class="field"><label>Club / Organización</label><input type="text" id="cfgClub" value="Círculo de Amistad XII de Enero" maxlength="60"></div>
+    </div>
+    <div class="field-row full" style="margin-top:10px;">
+      <div class="field"><label>Modalidad</label><input type="text" id="cfgModalidad" value="Tres bandas" maxlength="40"></div>
+    </div>
+    <div class="field-row full" style="margin-top:10px;">
+      <div class="field"><label>Descripción de la partida</label><input type="text" id="cfgDesc" value="" maxlength="80" placeholder="Ej: Campeonato Regional · Ronda 1"></div>
+    </div>
+    <p class="mode-note" id="modeNote"></p>
+    <button class="btn-gold" onclick="startGame()">▶ Iniciar partida</button>
+    <div class="sep"></div>
+    <div style="text-align:center;">
+      <div style="font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:rgba(184,146,42,.55);margin-bottom:8px;">⏱ Modo entrenamiento</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <button class="abtn" ontouchstart="" onclick="cmdTrain(300)" style="flex:1;min-width:80px;">5 min</button>
+        <button class="abtn" ontouchstart="" onclick="cmdTrain(600)" style="flex:1;min-width:80px;">10 min</button>
+        <button class="abtn" ontouchstart="" onclick="cmdTrain(900)" style="flex:1;min-width:80px;">15 min</button>
+        <button class="abtn" ontouchstart="" onclick="cmdTrain(1800)" style="flex:1;min-width:80px;">30 min</button>
+      </div>
+      <button class="abtn dng" ontouchstart="" onclick="cmd('train_stop')" style="width:100%;margin-top:6px;"><span class="ic">⏹</span>Detener entrenamiento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SECCIÓN JUEGO ══ -->
+<div id="secGame" style="display:none;width:100%;">
+  <div class="turn-box">
+    <div class="turn-lbl">Turno actual</div>
+    <div class="turn-name" id="rTurn">—</div>
+    <div style="font-size:.56rem;letter-spacing:3px;color:rgba(240,232,213,.35);margin-top:1px;" id="rEntry">Entrada —</div>
+  </div>
+
+  <div style="width:calc(100% - 24px);max-width:500px;margin-top:10px;">
+    <div class="scores-row">
+      <div class="sc" id="rCell0"><div class="sc-name" id="rN0">J1</div><div class="sc-score" id="rS0">0</div><div class="sc-rem" id="rR0">Faltan: —</div></div>
+      <div class="sc-div"><div class="sc-inn" id="rInn">1</div><div class="sc-ilbl">Entrada</div><div style="font-size:.66rem;color:rgba(184,146,42,.35);" id="rMaxI">/40</div></div>
+      <div class="sc" id="rCell1"><div class="sc-name" id="rN1">J2</div><div class="sc-score" id="rS1">0</div><div class="sc-rem" id="rR1">Faltan: —</div></div>
+    </div>
+  </div>
+
+  <div class="tmini">
+    <div class="tn" id="rTnum">—</div>
+    <div class="ttrack"><div class="tfill" id="rTfill" style="width:100%"></div></div>
+    <span style="font-size:.5rem;letter-spacing:2px;color:rgba(184,146,42,.38);">SEG</span>
+  </div>
+
+  <div class="slbl">Carambolas</div>
+  <div class="pctrl">
+    <div class="pblock" id="pb0">
+      <div class="pb-lbl">Jugador 1</div>
+      <div class="pb-name" id="pbn0">J1</div>
+      <div class="pb-score" id="pbs0">0</div>
+      <div class="pb-btns">
+        <button class="pbbtn m" ontouchstart="" onclick="cmd('minus',0)">−</button>
+        <button class="pbbtn p" ontouchstart="" onclick="cmd('plus',0)">+</button>
+      </div>
+    </div>
+    <div class="pblock" id="pb1">
+      <div class="pb-lbl">Jugador 2</div>
+      <div class="pb-name" id="pbn1">J2</div>
+      <div class="pb-score" id="pbs1">0</div>
+      <div class="pb-btns">
+        <button class="pbbtn m" ontouchstart="" onclick="cmd('minus',1)">−</button>
+        <button class="pbbtn p" ontouchstart="" onclick="cmd('plus',1)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="slbl">Acciones</div>
+  <div class="agrid">
+    <button class="abtn pri full" ontouchstart="" onclick="cmd('next')"><span class="ic">→</span>Pasar turno</button>
+    <button class="abtn" ontouchstart="" onclick="cmd('timer_toggle')"><span class="ic">⏱</span>Pausa / Cont.</button>
+    <button class="abtn" ontouchstart="" onclick="cmd('timer_reset')"><span class="ic">↺</span>Reiniciar crono</button>
+    <button class="abtn dng" ontouchstart="" onclick="cmd('timeout')"><span class="ic">⚑</span>Tiempo agotado</button>
+    <button class="abtn" ontouchstart="" onclick="cmd('undo')"><span class="ic">←</span>Deshacer</button>
+    <button class="abtn" ontouchstart="" onclick="requestState()"><span class="ic">🔄</span>Actualizar</button>
+    <button class="abtn dng full" ontouchstart="" onclick="showFinish()"><span class="ic">⏹</span>Finalizar partida</button>
+  </div>
+  <div class="agrid" style="margin-top:0;">
+    <button class="abtn full" ontouchstart="" onclick="goToSetup()"><span class="ic">⚙</span>Nueva / Reconfigurar</button>
+  </div>
+  <button class="disc-btn" onclick="disconnect()">✕ Desconectar</button>
+</div>
+
+<!-- ══ SECCIÓN FIN ══ -->
+<div id="secEnd" style="display:none;width:100%;">
+  <div class="card" style="text-align:center;">
+    <div class="card-title">🏆 Partida finalizada</div>
+    <div id="endResult" style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--crema);line-height:1.8;margin-bottom:8px;"></div>
+    <div class="sep"></div>
+    <p style="font-size:.62rem;letter-spacing:1.5px;color:rgba(184,146,42,.7);line-height:1.8;margin-bottom:6px;">
+      Revisa el acta completa y después<br>procede a la firma de los jugadores y árbitro.
+    </p>
+    <button class="btn-gold" onclick="verActa()">📄 Ver acta completa</button>
+    <button class="btn-ghost" onclick="goToSetup()">⚙ Nueva partida</button>
+  </div>
+</div>
+
+<!-- ══ OVERLAY ACTA (vista previa móvil) ══ -->
+<div id="actaOverlay" style="display:none;position:fixed;inset:0;z-index:250;background:rgba(5,12,28,.97);overflow-y:auto;flex-direction:column;align-items:center;padding:12px 12px 32px;">
+  <div style="width:100%;max-width:500px;display:flex;flex-direction:column;gap:10px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;">
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--dor2);letter-spacing:2px;">ACTA DEL PARTIDO</div>
+      <button onclick="cerrarActa()" style="background:transparent;border:1px solid rgba(240,232,213,.2);color:rgba(240,232,213,.6);border-radius:4px;padding:5px 10px;font-size:.6rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">✕ Cerrar</button>
+    </div>
+    <!-- Cabecera acta -->
+    <div style="background:rgba(13,31,60,.8);border:1px solid rgba(184,146,42,.3);border-radius:6px;padding:12px;text-align:center;">
+      <div style="font-family:'Playfair Display',serif;font-size:.9rem;font-weight:700;color:var(--dor2);letter-spacing:1px;" id="actaClub">—</div>
+      <div style="font-size:.55rem;letter-spacing:2px;color:rgba(240,232,213,.5);margin-top:2px;">DE CARAMBOLAS A TRES BANDAS</div>
+      <div style="font-size:.65rem;font-weight:700;color:var(--crema);margin-top:3px;" id="actaTemp">TEMPORADA —</div>
+      <div style="font-size:.6rem;color:rgba(184,146,42,.6);margin-top:2px;" id="actaDesc"></div>
+      <div style="font-size:.6rem;border:1px solid rgba(184,146,42,.3);display:inline-block;padding:2px 10px;border-radius:2px;margin-top:4px;color:rgba(240,232,213,.6);" id="actaDist">DISTANCIA: —</div>
+    </div>
+    <!-- Stats jugadores -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div id="actaBox0" style="background:rgba(13,31,60,.6);border:1px solid rgba(184,146,42,.25);border-radius:6px;padding:10px;text-align:center;"></div>
+      <div id="actaBox1" style="background:rgba(13,31,60,.6);border:1px solid rgba(184,146,42,.25);border-radius:6px;padding:10px;text-align:center;"></div>
+    </div>
+    <!-- Tabla de entradas -->
+    <div style="background:rgba(5,12,28,.5);border:1px solid rgba(184,146,42,.2);border-radius:6px;padding:10px;">
+      <div style="font-size:.52rem;letter-spacing:3px;text-transform:uppercase;color:rgba(184,146,42,.5);margin-bottom:6px;text-align:center;">Registro de entradas</div>
+      <div id="actaTablaResumen" style="font-size:.65rem;color:rgba(240,232,213,.6);line-height:2;text-align:center;"></div>
+    </div>
+    <!-- Botón firmar -->
+    <div style="height:1px;background:linear-gradient(to right,transparent,var(--dor),transparent);"></div>
+    <button class="btn-gold" onclick="iniciarFirmas()" style="margin-top:4px;">✍ Firmar acta (J1 · J2 · Árbitro)</button>
+    <button class="btn-ghost" onclick="cerrarActa()" style="margin-top:4px;">← Volver</button>
+  </div>
+</div>
+
+<!-- ══ OVERLAY FIRMAS ══ -->
+<div id="firmaOverlay">
+  <div class="firma-step" id="firmaStep">Paso 1 de 3</div>
+  <div class="firma-title" id="firmaTitulo">—</div>
+  <div class="firma-player-name" id="firmaJugador">—</div>
+  <div class="firma-hint" id="firmaHint">Firma en el recuadro blanco con el dedo</div>
+
+  <div class="firma-canvas-wrap" id="firmaWrap">
+    <canvas id="firmaCanvas"></canvas>
+  </div>
+  <button class="firma-clear" onclick="clearFirma()">✕ Borrar y repetir</button>
+
+  <button class="btn-gold" id="firmaNextBtn" onclick="firmaNext()" style="max-width:460px;width:100%;">
+    Siguiente →
+  </button>
+  <button class="btn-ghost" onclick="cancelarFirmas()" style="max-width:460px;width:100%;margin-top:4px;">
+    Cancelar
+  </button>
+</div>
+
+<!-- ══ FINISH CONFIRM ══ -->
+<div id="finishOverlay">
+  <div style="font-size:2.5rem">⏹</div>
+  <div class="fo-title">Finalizar partida</div>
+  <div class="fo-text">¿Seguro? Se declarará ganador<br>al jugador con más carambolas.</div>
+  <div class="fo-btns">
+    <button class="fo-btn cancel" onclick="hideFinish()">Cancelar</button>
+    <button class="fo-btn confirm" onclick="confirmFinish()">Finalizar</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  ESTADO
+// ══════════════════════════════════════════
+let peer=null, conn=null;
+let rCfg=null, rState=null, rTimerMax=40;
+let gameRunning=false;
+let firmas=[null,null];     // dataURL de cada firma
+let firmaActual=0;          // 0 o 1
+let firmaCtx=null;
+let firmaDrawing=false;
+
+const urlParams=new URLSearchParams(window.location.search);
+const autoCode=urlParams.get('code');
+if(autoCode) document.getElementById('codeInput').value=autoCode;
+
+// ══════════════════════════════════════════
+//  NAVEGACIÓN SECCIONES
+// ══════════════════════════════════════════
+function showSection(s){
+  ['secConnect','secSetup','secGame','secEnd'].forEach(id=>{
+    document.getElementById(id).style.display='none';
+  });
+  const el=document.getElementById('sec'+s);
+  if(el) el.style.display='';
+}
+
+// ══════════════════════════════════════════
+//  CONEXIÓN PEER
+// ══════════════════════════════════════════
+function setStatus(s,txt){
+  const dot=document.getElementById('sdot');
+  dot.className='sdot '+(s==='connected'?'connected':s==='connecting'?'connecting':s==='error'?'error':'');
+  document.getElementById('stxt').textContent=txt;
+}
+
+function connectToHost(){
+  const code=document.getElementById('codeInput').value.trim();
+  if(code.length!==6||!/^\d+$/.test(code)){showErr('Introduce un código de 6 dígitos');return;}
+  hideErr();
+  const btn=document.getElementById('connectBtn');
+  btn.disabled=true; btn.textContent='Conectando...';
+  setStatus('connecting','Conectando...');
+  if(peer){try{peer.destroy();}catch(e){}}
+  peer=new Peer({
+    config:{iceServers:[
+      {urls:'stun:stun.l.google.com:19302'},
+      {urls:'stun:stun1.l.google.com:19302'},
+      {urls:'stun:stun2.l.google.com:19302'},
+      {urls:'stun:stun3.l.google.com:19302'},
+      {urls:'turn:openrelay.metered.ca:80',    username:'openrelayproject', credential:'openrelayproject'},
+      {urls:'turn:openrelay.metered.ca:443',   username:'openrelayproject', credential:'openrelayproject'},
+      {urls:'turn:openrelay.metered.ca:443?transport=tcp', username:'openrelayproject', credential:'openrelayproject'}
+    ]}
+  });
+  peer.on('open',()=>{
+    conn=peer.connect('billar-host-'+code,{reliable:true});
+    const to=setTimeout(()=>{
+      if(!conn||!conn.open){
+        showErr('No se pudo conectar en 20 segundos. Comprueba que el marcador esté abierto y el código sea correcto.');
+        btn.disabled=false; btn.textContent='Reintentar';
+        setStatus('error','Sin conexión');
+      }
+    },20000);
+    conn.on('open',()=>{
+      clearTimeout(to);
+      setStatus('connected','Conectado ✓');
+      // Pedir estado al marcador; handleState decidirá la sección
+      requestState();
+      // Si en 2s no llega estado, ir a Setup por defecto
+      setTimeout(()=>{
+        const gS=document.getElementById('secGame');
+        const eS=document.getElementById('secEnd');
+        const cS=document.getElementById('secConnect');
+        if(cS.style.display!=='none' || (gS.style.display==='none' && eS.style.display==='none')){
+          showSection('Setup');
+        }
+      }, 2000);
+    });
+    conn.on('data',d=>handleState(d));
+    conn.on('close',()=>{
+      setStatus('error','Conexión perdida');
+      showSection('Connect');
+      btn.disabled=false; btn.textContent='Reconectar';
+      gameRunning=false;
+    });
+    conn.on('error',err=>{
+      clearTimeout(to);
+      showErr('Error: '+err.message);
+      btn.disabled=false; btn.textContent='Intentar de nuevo';
+      setStatus('error','Error');
+    });
+  });
+  peer.on('error',err=>{
+    showErr('No se pudo iniciar: '+err.type);
+    const btn=document.getElementById('connectBtn');
+    btn.disabled=false; btn.textContent='Intentar de nuevo';
+    setStatus('error','Error');
+  });
+}
+
+function disconnect(){
+  if(conn) try{conn.close();}catch(e){}
+  if(peer) try{peer.destroy();}catch(e){}
+  conn=null; peer=null; gameRunning=false;
+  showSection('Connect');
+  document.getElementById('connectBtn').disabled=false;
+  document.getElementById('connectBtn').textContent='Conectar';
+  setStatus('','Sin conexión');
+}
+
+function cmdTrain(secs){
+  if(!conn||!conn.open){alert('Sin conexión con el marcador.');return;}
+  try{conn.send({type:'cmd',cmd:'train_start',secs:secs});}catch(e){}
+}
+
+function cmd(c,player){
+  if(!conn||!conn.open) return;
+  try{conn.send({type:'cmd',cmd:c,player:player!==undefined?player:null});}catch(e){}
+}
+function requestState(){
+  if(!conn||!conn.open) return;
+  try{conn.send({type:'ping'});}catch(e){}
+}
+
+// ══════════════════════════════════════════
+//  CONFIGURAR PARTIDA
+// ══════════════════════════════════════════
+function updateNote(){
+  const mode=document.getElementById('cfgMode').value;
+  const car=document.getElementById('cfgCarambolas').value;
+  const entr=document.getElementById('cfgEntradas').value;
+  const secs=document.getElementById('cfgTimer').value;
+  document.getElementById('modeNote').textContent=mode==='carambolas'
+    ?`Gana el primero en alcanzar ${car} carambolas.\nTiempo por turno: ${secs} segundos.`
+    :`Se juegan ${entr} entradas. Gana quien más carambolas consiga.\nTiempo por turno: ${secs} segundos.`;
+}
+updateNote();
+
+function startGame(){
+  if(!conn||!conn.open){showErr('Sin conexión al marcador');return;}
+  const cfgData={
+    mode:document.getElementById('cfgMode').value,
+    carambolas:parseInt(document.getElementById('cfgCarambolas').value)||30,
+    maxEntradas:parseInt(document.getElementById('cfgEntradas').value)||40,
+    timerMax:parseInt(document.getElementById('cfgTimer').value)||40,
+    names:[
+      document.getElementById('cfgName1').value.trim()||'Jugador 1',
+      document.getElementById('cfgName2').value.trim()||'Jugador 2'
+    ],
+    temp:document.getElementById('cfgTemp').value.trim()||'2025-2026',
+    club:document.getElementById('cfgClub').value.trim()||'Círculo de Amistad XII de Enero',
+    desc:document.getElementById('cfgDesc').value.trim(),
+    modalidad:document.getElementById('cfgModalidad').value.trim()||'Tres bandas'
+  };
+  try{conn.send({type:'setup',cfg:cfgData});}catch(e){}
+  gameRunning=true;
+  firmas=[null,null];
+  showSection('Game');
+}
+function goToSetup(){ showSection('Setup'); }
+
+// ══════════════════════════════════════════
+//  FINALIZAR
+// ══════════════════════════════════════════
+function showFinish(){ document.getElementById('finishOverlay').classList.add('show'); }
+function hideFinish(){ document.getElementById('finishOverlay').classList.remove('show'); }
+function confirmFinish(){ cmd('force_finish'); hideFinish(); }
+
+// ══════════════════════════════════════════
+//  ESTADO RECIBIDO DEL MARCADOR
+// ══════════════════════════════════════════
+function handleState(d){
+  if(!d||d.type!=='state') return;
+  rCfg=d.cfg; rState=d.state; rTimerMax=d.state.timerMax||40;
+  // Cancelar timeout de navegación por defecto si existe
+  if(conn && conn._navTimeout){ clearTimeout(conn._navTimeout); conn._navTimeout=null; }
+
+  // Actualizar nombres en formulario de config
+  if(rCfg){
+    document.getElementById('cfgName1').value=rCfg.names[0];
+    document.getElementById('cfgName2').value=rCfg.names[1];
+    if(rCfg.temp) document.getElementById('cfgTemp').value=rCfg.temp;
+    if(rCfg.club) document.getElementById('cfgClub').value=rCfg.club;
+    if(rCfg.desc!==undefined) document.getElementById('cfgDesc').value=rCfg.desc;
+    if(rCfg.modalidad) document.getElementById('cfgModalidad').value=rCfg.modalidad;
+  }
+
+  const secGame=document.getElementById('secGame');
+  const secSetup=document.getElementById('secSetup');
+  const secEnd=document.getElementById('secEnd');
+  const enJuego=secGame.style.display!=='none';
+  const enSetup=secSetup.style.display!=='none';
+  const enFin=secEnd.style.display!=='none';
+
+  if(d.state.gameOver){
+    // Partida terminada — ir a sección fin si no estamos ya ahí
+    if(!enFin){
+      gameRunning=false;
+      const comp=Math.max(1,d.state.innings-1);
+      const s=d.state.scores;
+      const wi=s[0]>s[1]?0:s[1]>s[0]?1:-1;
+      const avg=wi>=0?(s[wi]/comp).toFixed(2):'—';
+      document.getElementById('endResult').innerHTML=wi>=0
+        ?`<strong>${rCfg.names[wi]}</strong><br>${s[wi]} car. · ${comp} entradas · avg ${avg}`
+        :`<strong>EMPATE</strong><br>${s[0]} — ${s[1]} en ${comp} entradas`;
+      showSection('End');
+    }
+  } else {
+    // Partida en curso — si estamos en connect o setup, navegar a juego
+    if(!enJuego && !enSetup){
+      gameRunning=true;
+      showSection('Game');
+    } else if(enSetup && d.state.scores[0]===0 && d.state.scores[1]===0 && d.state.innings<=1){
+      // Partida recién iniciada desde setup — pasar a juego
+      gameRunning=true;
+      showSection('Game');
+    }
+  }
+
+  renderR();
+  if(d.state.timerSeconds!==undefined) renderTimer(d.state.timerSeconds,rTimerMax);
+}
+
+function renderR(){
+  if(!rState||!rCfg) return;
+  const st=rState,cf=rCfg;
+  document.getElementById('rTurn').textContent=cf.names[st.currentPlayer];
+  document.getElementById('rEntry').textContent=`Entrada ${st.innings}${cf.mode==='entradas'?' / '+cf.maxEntradas:''}`;
+  for(let p=0;p<2;p++){
+    document.getElementById('rCell'+p).className='sc'+(p===st.currentPlayer?' act':'');
+    document.getElementById('rN'+p).textContent=cf.names[p];
+    document.getElementById('rS'+p).textContent=st.scores[p];
+    document.getElementById('rR'+p).textContent=`Faltan: ${Math.max(0,cf.carambolas-st.scores[p])}`;
+    document.getElementById('pb'+p).className='pblock'+(p===st.currentPlayer?' act':'');
+    document.getElementById('pbn'+p).textContent=cf.names[p];
+    document.getElementById('pbs'+p).textContent=st.scores[p];
+  }
+  document.getElementById('rInn').textContent=st.innings;
+  document.getElementById('rMaxI').textContent='/'+cf.maxEntradas;
+}
+function renderTimer(s,max){
+  const el=document.getElementById('rTnum');
+  const fill=document.getElementById('rTfill');
+  el.textContent=s;
+  fill.style.width=Math.max(0,s/max)*100+'%';
+  const warn=s<=max*.375&&s>max*.175,danger=s<=max*.175;
+  el.className='tn'+(danger?' danger':warn?' warning':'');
+  fill.className='tfill'+(danger?' danger':warn?' warning':'');
+}
+
+function showErr(msg){const e=document.getElementById('connectErr');e.textContent=msg;e.classList.add('show');}
+function hideErr(){document.getElementById('connectErr').classList.remove('show');}
+
+// ══════════════════════════════════════════
+//  ACTA PREVIEW
+// ══════════════════════════════════════════
+function verActa(){
+  if(!rCfg||!rState) return;
+  // Llenar vista previa
+  document.getElementById('actaClub').textContent=(rCfg.club||'Círculo de Amistad XII de Enero').toUpperCase();
+  document.getElementById('actaTemp').textContent='TEMPORADA '+(rCfg.temp||'—');
+  document.getElementById('actaDesc').textContent=rCfg.desc||'';
+  document.getElementById('actaDist').textContent=`DISTANCIA: ${rCfg.carambolas} car. o ${rCfg.maxEntradas} entradas`;
+  const comp=Math.max(1,rState.innings-1);
+  for(let p=0;p<2;p++){
+    const avg=rState.scores[p]>0?(rState.scores[p]/comp).toFixed(3).replace('.',','):'0,000';
+    document.getElementById('actaBox'+p).innerHTML=`
+      <div style="font-family:'Playfair Display',serif;font-size:.82rem;font-weight:700;color:var(--crema);margin-bottom:6px;">${rCfg.names[p]}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:.6rem;">
+        <div style="color:rgba(184,146,42,.6);">Carambolas</div><div style="color:var(--crema);font-weight:700;">${rState.scores[p]}</div>
+        <div style="color:rgba(184,146,42,.6);">Entradas</div><div style="color:var(--crema);font-weight:700;">${comp}</div>
+        <div style="color:rgba(184,146,42,.6);">Promedio</div><div style="color:var(--crema);font-weight:700;">${avg}</div>
+        <div style="color:rgba(184,146,42,.6);">Serie máx</div><div style="color:var(--crema);font-weight:700;">${rState.bestInning[p]||0}</div>
+      </div>`;
+  }
+  // Resumen de entradas
+  const logMap={};
+  rState.log.forEach(r=>{logMap[r.inning]=r;});
+  let resumen=`<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:2px;font-size:.6rem;text-align:center;">`;
+  resumen+=`<div style="color:rgba(184,146,42,.6);font-weight:700;">Entr.</div><div style="color:rgba(184,146,42,.6);">${rCfg.names[0].split(' ')[0]}</div><div style="color:rgba(184,146,42,.6);">Total</div><div style="color:rgba(184,146,42,.6);">${rCfg.names[1].split(' ')[0]}</div><div style="color:rgba(184,146,42,.6);">Total</div>`;
+  for(let i=1;i<=Math.min(rState.innings,40);i++){
+    const r=logMap[i];
+    const mk=i%5===0;
+    const st=mk?'font-weight:700;color:var(--dor2)':'color:rgba(240,232,213,.7)';
+    resumen+=r
+      ?`<div style="${st}">${i}</div><div style="${st}">${r.s0||''}</div><div style="${st}">${r.t0}</div><div style="${st}">${r.s1||''}</div><div style="${st}">${r.t1}</div>`
+      :`<div style="${st}">${i}</div><div></div><div></div><div></div><div></div>`;
+  }
+  resumen+='</div>';
+  document.getElementById('actaTablaResumen').innerHTML=resumen;
+  document.getElementById('actaOverlay').style.display='flex';
+}
+function cerrarActa(){
+  document.getElementById('actaOverlay').style.display='none';
+}
+
+// ══════════════════════════════════════════
+//  FIRMAS (3 pasos: J1, J2, Árbitro)
+// ══════════════════════════════════════════
+// firmas[0] = firma del Jugador 1 (va en casilla del J2 en el PDF)
+// firmas[1] = firma del Jugador 2 (va en casilla del J1 en el PDF)
+// firmas[2] = firma del Árbitro (va en centro)
+function iniciarFirmas(){
+  firmas=[null,null,null];
+  firmaActual=0;
+  document.getElementById('actaOverlay').style.display='none';
+  mostrarPasoFirma(0);
+  document.getElementById('firmaOverlay').classList.add('show');
+}
+function cancelarFirmas(){
+  document.getElementById('firmaOverlay').classList.remove('show');
+}
+
+const FIRMA_PASOS=[
+  {titulo:'Firma del Jugador 1', hint:'Su firma aparecerá en la casilla del Jugador 2'},
+  {titulo:'Firma del Jugador 2', hint:'Su firma aparecerá en la casilla del Jugador 1'},
+  {titulo:'Firma del Árbitro',   hint:'La firma del árbitro aparecerá en el centro'}
+];
+
+function mostrarPasoFirma(p){
+  firmaActual=p;
+  const paso=FIRMA_PASOS[p];
+  const nombre=p<2?(rCfg?rCfg.names[p]:'Jugador '+(p+1)):'Árbitro';
+  document.getElementById('firmaStep').textContent=`Paso ${p+1} de 3`;
+  document.getElementById('firmaTitulo').textContent=paso.titulo;
+  document.getElementById('firmaJugador').textContent=nombre;
+  document.getElementById('firmaHint').textContent=paso.hint;
+  document.getElementById('firmaNextBtn').textContent=p<2?'Siguiente →':'✓ Generar PDF';
+
+  // Inicializar canvas
+  const wrap=document.getElementById('firmaWrap');
+  const canvas=document.getElementById('firmaCanvas');
+  const W=Math.min(wrap.clientWidth||460, 460);
+  const H=Math.round(W*0.38);
+  canvas.width=W*2;
+  canvas.height=H*2;
+  canvas.style.height=H+'px';
+  firmaCtx=canvas.getContext('2d');
+  firmaCtx.scale(2,2);
+  firmaCtx.fillStyle='#ffffff';
+  firmaCtx.fillRect(0,0,W,H);
+  firmaCtx.strokeStyle='#0d1f3c';
+  firmaCtx.lineWidth=2.5;
+  firmaCtx.lineCap='round';
+  firmaCtx.lineJoin='round';
+  firmaDrawing=false;
+  bindFirmaEvents(canvas, W, H);
+}
+
+function bindFirmaEvents(canvas, W, H){
+  // Eliminar listeners anteriores clonando
+  const nc=canvas.cloneNode(true);
+  canvas.parentNode.replaceChild(nc,canvas);
+  const c=document.getElementById('firmaCanvas');
+  firmaCtx=c.getContext('2d');
+  firmaCtx.scale(2,2);
+  firmaCtx.fillStyle='#ffffff';
+  firmaCtx.fillRect(0,0,W,H);
+  firmaCtx.strokeStyle='#0d1f3c';
+  firmaCtx.lineWidth=2.5;
+  firmaCtx.lineCap='round';
+  firmaCtx.lineJoin='round';
+
+  function getPos(e){
+    const rect=c.getBoundingClientRect();
+    const src=e.touches?e.touches[0]:e;
+    return{x:(src.clientX-rect.left),y:(src.clientY-rect.top)};
+  }
+  function start(e){ e.preventDefault(); firmaDrawing=true; const p=getPos(e); firmaCtx.beginPath(); firmaCtx.moveTo(p.x,p.y); }
+  function move(e){ e.preventDefault(); if(!firmaDrawing)return; const p=getPos(e); firmaCtx.lineTo(p.x,p.y); firmaCtx.stroke(); }
+  function end(e){ e.preventDefault(); firmaDrawing=false; }
+
+  c.addEventListener('mousedown',start);
+  c.addEventListener('mousemove',move);
+  c.addEventListener('mouseup',end);
+  c.addEventListener('touchstart',start,{passive:false});
+  c.addEventListener('touchmove',move,{passive:false});
+  c.addEventListener('touchend',end,{passive:false});
+}
+
+function clearFirma(){
+  const c=document.getElementById('firmaCanvas');
+  firmaCtx=c.getContext('2d');
+  // Escala 2 ya aplicada, usar dimensiones del canvas lógicas
+  const W=c.width/2, H=c.height/2;
+  firmaCtx.setTransform(1,0,0,1,0,0);
+  firmaCtx.fillStyle='#ffffff';
+  firmaCtx.fillRect(0,0,c.width,c.height);
+  firmaCtx.setTransform(2,0,0,2,0,0);
+  firmaCtx.strokeStyle='#0d1f3c';
+  firmaCtx.lineWidth=2.5;
+  firmaCtx.lineCap='round';
+  firmaCtx.lineJoin='round';
+}
+
+function firmaEsVacia(){
+  const c=document.getElementById('firmaCanvas');
+  const ctx=c.getContext('2d');
+  const data=ctx.getImageData(0,0,c.width,c.height).data;
+  // Contar pixels no blancos
+  let nonWhite=0;
+  for(let i=0;i<data.length;i+=4){
+    if(data[i]<240||data[i+1]<240||data[i+2]<240) nonWhite++;
+  }
+  return nonWhite<30; // menos de 30px de trazo = vacía
+}
+
+function firmaNext(){
+  if(firmaEsVacia()){
+    alert('Por favor firma antes de continuar.');
+    return;
+  }
+  const c=document.getElementById('firmaCanvas');
+  firmas[firmaActual]=c.toDataURL('image/png');
+  if(firmaActual<2){
+    mostrarPasoFirma(firmaActual+1);
+  }else{
+    document.getElementById('firmaOverlay').classList.remove('show');
+    generarPDF();
+  }
+}
+
+// ══════════════════════════════════════════
+//  GENERAR PDF CON JSPDF
+// ══════════════════════════════════════════
+async function generarPDF(){
+  if(!rCfg||!rState){alert('Sin datos de partida.');return;}
+  try{ await _generarPDFInterno(); }
+  catch(err){ console.error('PDF error:',err); alert('Error al generar el PDF: '+err.message); }
+}
+async function _generarPDFInterno(){
+
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const PW=210, PH=297;
+  const M=14;  // margen
+  const CW=PW-M*2;
+  let y=M;
+
+  // ── Fuentes y colores ──
+  const AZUL=[13,31,60];
+  const DORA=[184,146,42];
+  const GRIS=[100,100,100];
+  const NEGRO=[0,0,0];
+
+  // ── Logo billar dibujado con jsPDF (sin imágenes externas para evitar errores) ──
+  // Bolas decorativas con círculos simples
+  const bx=M+9; const by=y+9;
+  doc.setFillColor(180,0,0); doc.circle(bx-4,by,3.5,'F');
+  doc.setFillColor(245,240,224); doc.circle(bx+0.5,by,4,'F');
+  doc.setFillColor(232,168,0); doc.circle(bx+5,by,3.5,'F');
+  doc.setDrawColor(30,30,30); doc.setLineWidth(0.2);
+  doc.circle(bx-4,by,3.5); doc.circle(bx+0.5,by,4); doc.circle(bx+5,by,3.5);
+  // Misma decoración en lado derecho
+  const bx2=PW-M-9;
+  doc.setFillColor(180,0,0); doc.circle(bx2-5,by,3.5,'F');
+  doc.setFillColor(245,240,224); doc.circle(bx2-0.5,by,4,'F');
+  doc.setFillColor(232,168,0); doc.circle(bx2+4,by,3.5,'F');
+  doc.circle(bx2-5,by,3.5); doc.circle(bx2-0.5,by,4); doc.circle(bx2+4,by,3.5);
+
+  // ── Cabecera ──
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13);
+  doc.setTextColor(...AZUL);
+  doc.text((rCfg.club||'Círculo de Amistad XII de Enero').toUpperCase(),PW/2,y+7,{align:'center'});
+  doc.setFontSize(8);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(...GRIS);
+  doc.text((rCfg.modalidad||'Tres bandas').toUpperCase(),PW/2,y+12,{align:'center'});
+  if(rCfg.desc){
+    doc.setFontSize(7.5);
+    doc.text(rCfg.desc,PW/2,y+16.5,{align:'center'});
+  }
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8.5);
+  doc.text('TEMPORADA '+rCfg.temp,PW/2,y+(rCfg.desc?21:17),{align:'center'});
+
+  // Línea dorada
+  y+=22;
+  doc.setDrawColor(...DORA);
+  doc.setLineWidth(0.7);
+  doc.line(M,y,PW-M,y);
+  y+=5;
+
+  // ── Distancia ──
+  doc.setFontSize(8);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(...GRIS);
+  doc.setDrawColor(...NEGRO);
+  doc.setLineWidth(0.3);
+  const distTxt=`DISTANCIA: ${rCfg.carambolas} carambolas o ${rCfg.maxEntradas} entradas`;
+  const dtW=doc.getTextWidth(distTxt)+6;
+  doc.rect((PW-dtW)/2,y-3,dtW,6);
+  doc.text(distTxt,PW/2,y+0.8,{align:'center'});
+  y+=9;
+
+  // ── Estadísticas jugadores ──
+  const comp=Math.max(1,rState.innings-1);
+  const statsBox=(px,name,score,avg,best)=>{
+    doc.setFillColor(235,240,248);
+    doc.rect(px,y,CW/2-3,14,'F');
+    doc.setDrawColor(...AZUL);
+    doc.setLineWidth(0.3);
+    doc.rect(px,y,CW/2-3,14);
+    // header row
+    const cols=['Carambolas','Entradas','Promedio','Serie máx'];
+    const vals=[score,comp,avg,best];
+    const cw=(CW/2-3)/4;
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...AZUL);
+    cols.forEach((c,i)=>{ doc.text(c,px+cw*i+cw/2,y+4.5,{align:'center'}); });
+    doc.setLineWidth(0.2);
+    doc.line(px,y+6.5,px+CW/2-3,y+6.5);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...NEGRO);
+    vals.forEach((v,i)=>{ doc.text(String(v),px+cw*i+cw/2,y+12,{align:'center'}); });
+    for(let i=1;i<4;i++){
+      doc.setLineWidth(0.15);
+      doc.line(px+cw*i,y,px+cw*i,y+14);
+    }
+  };
+  const avg0=rState.scores[0]>0?(rState.scores[0]/comp).toFixed(3).replace('.',','):'0,000';
+  const avg1=rState.scores[1]>0?(rState.scores[1]/comp).toFixed(3).replace('.',','):'0,000';
+  statsBox(M,rCfg.names[0],rState.scores[0],avg0,rState.bestInning[0]||0);
+  statsBox(M+CW/2+3,rCfg.names[1],rState.scores[1],avg1,rState.bestInning[1]||0);
+  y+=18;
+
+  // ── Título acta ──
+  doc.setLineWidth(0.5);
+  doc.setDrawColor(...NEGRO);
+  doc.line(M,y,PW-M,y);
+  y+=4;
+  doc.setFontSize(10);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(...NEGRO);
+  doc.text('ACTA DEL PARTIDO',PW/2,y+3,{align:'center'});
+  y+=5;
+  doc.line(M,y,PW-M,y);
+  y+=5;
+
+  // ── Tablas de entradas ──
+  const logMap={};
+  rState.log.forEach(r=>{logMap[r.inning]=r;});
+  const cur=rState.innings;
+
+  const colW=CW/12; // 6 cols por jugador × 2 jugadores
+  const rowH=4.2;
+  const heads=['Ent.','Parc.','TOTAL','Ent.','Parc.','TOTAL'];
+  const tblW=CW/2-2;
+
+  function drawTable(tx, pi){
+    // Cabeceras
+    doc.setFillColor(26,40,72);
+    doc.rect(tx,y,tblW,5,'F');
+    doc.setFontSize(6);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(240,232,213);
+    const cw2=tblW/6;
+    heads.forEach((h,i)=>doc.text(h,tx+cw2*i+cw2/2,y+3.4,{align:'center'}));
+    let ry=y+5;
+    let prevTotal=[0,0]; // para detectar si el total cambió respecto a la entrada anterior
+    for(let i=0;i<20;i++){
+      const e1=i+1,e2=i+21;
+      function cellData(e){
+        const r=logMap[e];
+        if(r){
+          const parc=pi===0?r.s0:r.s1;
+          const tot= pi===0?r.t0:r.t1;
+          return{ parc, tot, played:true };
+        } else if(e===cur&&!rState.gameOver){
+          const parc=rState.currentInningScore[pi];
+          const tot= rState.scores[pi];
+          return{ parc, tot, played:true };
+        }
+        return{ parc:null, tot:null, played:false };
+      }
+      const c1=cellData(e1), c2=cellData(e2);
+
+      // Mostrar parcial: número si >0, guión si jugó y fue 0, vacío si no jugó aún
+      function fmtParc(c){ return c.played?(c.parc>0?String(c.parc):'-'):''; }
+      // Mostrar total: número solo si cambió respecto al anterior, guión si jugó y no cambió
+      function fmtTot(c, prev){
+        if(!c.played) return '';
+        if(c.tot===prev) return '-';
+        return String(c.tot);
+      }
+
+      const p1=fmtParc(c1), t1=fmtTot(c1, prevTotal[0]);
+      const p2=fmtParc(c2), t2=fmtTot(c2, prevTotal[1]);
+      if(c1.played) prevTotal[0]=c1.tot;
+      if(c2.played) prevTotal[1]=c2.tot;
+
+      const mark5=e1%5===0||e2%5===0;
+      if(mark5){ doc.setFillColor(237,242,248); doc.rect(tx,ry,tblW,rowH,'F'); }
+      doc.setDrawColor(180,180,180);
+      doc.setLineWidth(0.15);
+      doc.rect(tx,ry,tblW,rowH);
+      doc.setFontSize(mark5?7:6.5);
+      doc.setFont('helvetica',mark5?'bold':'normal');
+      if(mark5) doc.setTextColor(...AZUL); else doc.setTextColor(...NEGRO);
+      const vals=[e1,p1,t1,e2,p2,t2];
+      vals.forEach((v,i)=>doc.text(String(v),tx+cw2*i+cw2/2,ry+rowH-1.2,{align:'center'}));
+      // líneas columnas
+      for(let ci=1;ci<6;ci++){doc.setLineWidth(0.1);doc.line(tx+cw2*ci,ry,tx+cw2*ci,ry+rowH);}
+      ry+=rowH;
+    }
+    // nombre jugador encima tabla
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...AZUL);
+    doc.text(rCfg.names[pi],tx+tblW/2,y-1.5,{align:'center'});
+  }
+
+  drawTable(M,0);
+  drawTable(M+CW/2+3+1,1);
+  y+=5+20*rowH+4;
+
+  // ── Fecha y ciudad ──
+  const now=new Date();
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const fechaTxt=`Santa Cruz de Tenerife, ${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}`;
+  doc.setFontSize(8);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(...GRIS);
+  doc.text(fechaTxt,PW/2,y,{align:'center'});
+  y+=10;
+
+  // ── Firmas (3 casillas: J2·Árbitro·J1) ──
+  // Nota: J1 firma en casilla de J2 y viceversa (protocolo de verificación cruzada)
+  const sigW=52, sigH=24;
+  const arbW=54;
+  const totalW=sigW+arbW+sigW+8;
+  const startX=(PW-totalW)/2;
+  const sx0=startX;               // casilla J2 (firmada por J1)
+  const sxA=startX+sigW+4;        // casilla árbitro (centro)
+  const sx1=startX+sigW+4+arbW+4; // casilla J1 (firmada por J2)
+
+  // Casilla J2 (firma J1)
+  if(firmas[0]) doc.addImage(firmas[0],'PNG',sx0,y,sigW,sigH);
+  doc.setDrawColor(...NEGRO); doc.setLineWidth(0.3);
+  doc.line(sx0,y+sigH,sx0+sigW,y+sigH);
+  doc.setFontSize(6.5); doc.setFont('helvetica','bold'); doc.setTextColor(...AZUL);
+  doc.text('El Jugador 2',sx0+sigW/2,y+sigH+3.5,{align:'center'});
+  doc.setFont('helvetica','normal'); doc.setTextColor(...GRIS);
+  doc.text('D. '+rCfg.names[1],sx0+sigW/2,y+sigH+7,{align:'center'});
+
+  // Casilla árbitro (centro)
+  if(firmas[2]) doc.addImage(firmas[2],'PNG',sxA,y,arbW,sigH);
+  doc.line(sxA,y+sigH,sxA+arbW,y+sigH);
+  doc.setFontSize(6.5); doc.setFont('helvetica','bold'); doc.setTextColor(...AZUL);
+  doc.text('El Árbitro',sxA+arbW/2,y+sigH+3.5,{align:'center'});
+  doc.setFont('helvetica','normal'); doc.setTextColor(...GRIS);
+  doc.text('Árbitro oficial',sxA+arbW/2,y+sigH+7,{align:'center'});
+
+  // Casilla J1 (firma J2)
+  if(firmas[1]) doc.addImage(firmas[1],'PNG',sx1,y,sigW,sigH);
+  doc.line(sx1,y+sigH,sx1+sigW,y+sigH);
+  doc.setFontSize(6.5); doc.setFont('helvetica','bold'); doc.setTextColor(...AZUL);
+  doc.text('El Jugador 1',sx1+sigW/2,y+sigH+3.5,{align:'center'});
+  doc.setFont('helvetica','normal'); doc.setTextColor(...GRIS);
+  doc.text('D. '+rCfg.names[0],sx1+sigW/2,y+sigH+7,{align:'center'});
+
+  y+=sigH+14;
+
+  // ── Línea final dorada ──
+  doc.setDrawColor(...DORA);
+  doc.setLineWidth(0.5);
+  doc.line(M,y,PW-M,y);
+
+  // ── Descargar ──
+  const fecha=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const n0=rCfg.names[0].replace(/\s+/g,'_');
+  const n1=rCfg.names[1].replace(/\s+/g,'_');
+  doc.save(`Acta_Billar_${fecha}_${n0}_vs_${n1}.pdf`);
+}
+
+// Cargar imagen como base64 para jsPDF
+function fetchImageAsBase64(url){
+  return new Promise((res)=>{
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>{
+      const c=document.createElement('canvas');
+      c.width=img.width; c.height=img.height;
+      c.getContext('2d').drawImage(img,0,0);
+      try{ res(c.toDataURL('image/png')); }catch(e){ res(null); }
+    };
+    img.onerror=()=>res(null);
+    img.src=url;
+  });
+}
+
+// ── INIT ──
+document.getElementById('codeInput').addEventListener('keydown',e=>{if(e.key==='Enter')connectToHost();});
+if(autoCode&&autoCode.length===6) setTimeout(connectToHost,600);
+</script>
+</body>
+</html>
