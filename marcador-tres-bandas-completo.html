@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<!--
+    Marcador: Tres Bandas - Completo
+    Autor: Ernesto Jorge Toledo
+    Fecha de creación: Abril 2026
+    © 2026 Ernesto Jorge Toledo. Todos los derechos reservados.
+-->
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Marcador Billar · 3 Bandas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --bg:    #0e1420;
+            --bg2:   #141c2e;
+            --bg3:   #1a2540;
+            --blue:  #1a6fc4;
+            --blue2: #2288ee;
+            --gold:  #f0c040;
+            --white: #ffffff;
+            --gray:  #8a9ab0;
+            --red:   #e03030;
+            --border: rgba(255,255,255,0.07);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            width: 100%; height: 100vh; overflow: hidden;
+            background: var(--bg);
+            font-family: 'Barlow Condensed', sans-serif;
+            color: var(--white);
+            display: flex; flex-direction: column;
+            user-select: none;
+        }
+
+        /* ── WAIT ── */
+        #waitScreen {
+            position: fixed; inset: 0; background: var(--bg);
+            z-index: 9999; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 16px;
+        }
+        .qr-box   { background: white; padding: 16px; border-radius: 12px; border: 4px solid var(--gold); }
+        .code-txt { font-size: 3.5rem; color: var(--gold); font-weight: 900; letter-spacing: 10px; font-family: 'Oswald', sans-serif; }
+
+        /* ── CALENTAMIENTO ── */
+        #modal-warmup {
+            display: none; position: fixed; inset: 0;
+            background: rgba(5,7,10,0.98); z-index: 20000;
+            flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+        }
+        #warmup-title { font-size: 2.5rem; color: var(--gold); font-weight: 900; text-transform: uppercase; font-family: 'Oswald', sans-serif; }
+        #warmup-timer { font-size: 14rem; font-family: 'Oswald', monospace; color: white; line-height: 1; }
+
+        /* ── HEADER ──
+           Tres columnas de igual flex para que el crono quede
+           centrado respecto al club (izq) y las entradas (der). */
+        #header {
+            width: 100%; display: flex; align-items: center;
+            background: linear-gradient(180deg, #141720 0%, var(--bg) 100%);
+            padding: 10px 30px; border-bottom: 1px solid rgba(255,255,255,0.06);
+            flex-shrink: 0;
+        }
+        .header-left, .header-right { flex: 1; }
+        .header-center { flex: 0 0 auto; text-align: center; padding: 0 20px; }
+        .header-right  { text-align: right; }
+
+        .club-name { font-size: 2rem; font-weight: 900; color: var(--blue2); text-transform: uppercase; font-family: 'Oswald', sans-serif; }
+        .club-sub  { font-size: 0.9rem; color: #4a78b0; letter-spacing: 2px; font-weight: 600; }
+
+        #display-tiempo {
+            font-size: 6.5rem; font-weight: 400; color: var(--gold);
+            font-family: 'Oswald', monospace; line-height: 1;
+            text-shadow: 0 0 20px rgba(240,192,64,.35);
+            transition: color .3s;
+        }
+        #display-tiempo.critico { color: var(--red); animation: blink 1s infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+        .ent-lbl { font-size: 0.9rem; color: var(--gray); letter-spacing: 2px; text-transform: uppercase; }
+        .ent-val { font-size: 2.8rem; font-weight: 900; font-family: 'Oswald', sans-serif; }
+
+        /* ── CARDS ÁREA ── */
+        #cards-area {
+            flex: 1; display: flex; gap: 6px; padding: 6px;
+            min-height: 0;
+        }
+
+        /* ── CARD JUGADOR ── */
+        .card-jugador {
+            flex: 1; border-radius: 10px; border: 2px solid #1e2a3e;
+            display: flex; flex-direction: column; overflow: hidden;
+            transition: all .25s;
+        }
+        /* J1 activo: blanco + azul */
+        .card-jugador.activo-1 { background:#fff; border-color:var(--blue2); box-shadow:0 0 30px rgba(34,136,238,0.3); }
+        .card-jugador.activo-1 .nombre-display  { color:#0a4a96; background:rgba(26,111,196,0.08); }
+        .card-jugador.activo-1 .puntos          { color:#0a4a96; }
+        .card-jugador.activo-1 .stats-row       { background:rgba(26,111,196,0.06); }
+        .card-jugador.activo-1 .stat-val        { color:#2a68b8; }
+        .card-jugador.activo-1 .stat-lbl        { color:#7aaad0; }
+        .card-jugador.activo-1 .timeout-dots    { background:rgba(26,111,196,0.06); }
+        .card-jugador.activo-1 .to-on           { background:var(--gold); box-shadow:0 0 10px var(--gold); }
+        /* J1 inactivo: azul oscuro + blanco */
+        .card-jugador.inactivo-1 { background:#0a1830; border-color:#1a3060; }
+        .card-jugador.inactivo-1 .nombre-display { color:#fff; background:rgba(0,0,0,0.3); }
+        .card-jugador.inactivo-1 .puntos         { color:#fff; }
+        .card-jugador.inactivo-1 .stats-row      { background:rgba(0,0,0,0.2); }
+        .card-jugador.inactivo-1 .stat-val       { color:#8ab0d8; }
+        .card-jugador.inactivo-1 .stat-lbl       { color:#4a6080; }
+        /* J2 activo: amarillo + azul */
+        .card-jugador.activo-2 { background:#f5d020; border-color:var(--gold); box-shadow:0 0 30px rgba(240,192,64,0.4); }
+        .card-jugador.activo-2 .nombre-display  { color:#0a3a80; background:rgba(240,192,64,0.2); }
+        .card-jugador.activo-2 .puntos          { color:#0a3a80; }
+        .card-jugador.activo-2 .stats-row       { background:rgba(240,192,64,0.15); }
+        .card-jugador.activo-2 .stat-val        { color:#1a4a90; }
+        .card-jugador.activo-2 .stat-lbl        { color:#2a6aaa; }
+        .card-jugador.activo-2 .timeout-dots    { background:rgba(240,192,64,0.1); }
+        .card-jugador.activo-2 .to-on           { background:#0a3a80; box-shadow:0 0 10px #0a3a80; }
+        /* J2 inactivo: azul oscuro + amarillo */
+        .card-jugador.inactivo-2 { background:#0a1830; border-color:#1a3060; }
+        .card-jugador.inactivo-2 .nombre-display { color:var(--gold); background:rgba(0,0,0,0.3); }
+        .card-jugador.inactivo-2 .puntos         { color:var(--gold); }
+        .card-jugador.inactivo-2 .stats-row      { background:rgba(0,0,0,0.2); }
+        .card-jugador.inactivo-2 .stat-val       { color:#c09030; }
+        .card-jugador.inactivo-2 .stat-lbl       { color:#5a4018; }
+
+        .nombre-display {
+            font-size: clamp(2.5rem, 4.5vw, 5rem);
+            font-weight: 900; text-transform: uppercase;
+            padding: 10px 0; text-align: center; width: 100%;
+            font-family: 'Oswald', sans-serif; line-height: 1;
+            border: none; flex-shrink: 0; transition: color .25s, background .25s;
+        }
+        .timeout-dots {
+            display: flex; justify-content: center; gap: 10px;
+            padding: 8px 0; background: rgba(0,0,0,0.25); flex-shrink: 0;
+        }
+        .to-dot { width:50px; height:16px; background:#1a0000; border-radius:8px; border:1px solid #222; transition:all .3s; }
+        .to-on  { background:var(--gold); box-shadow:0 0 10px var(--gold); border-color:#fff; }
+
+        .puntos {
+            font-size: clamp(8rem, 18vw, 20rem);
+            font-weight: 900; line-height: 1; text-align: center;
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            font-family: 'Oswald', sans-serif; transition: color .25s;
+        }
+        .stats-row {
+            display: flex; justify-content: space-around;
+            background: rgba(0,0,0,0.3); padding: 10px; flex-shrink: 0;
+        }
+        .stat-item { text-align: center; }
+        .stat-lbl { font-size: 0.85rem; color: var(--gray); letter-spacing: 2px; text-transform: uppercase; display: block; }
+        .stat-val { font-size: 3rem; font-weight: 700; font-family: 'Oswald', sans-serif; color: #9ab; }
+
+        /* Panel central */
+        #panel-centro {
+            width: 210px; min-width: 210px; flex-shrink: 0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+        }
+        .serie-block { width:100%; background:var(--blue); border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); text-align:center; }
+        .serie-hdr   { background:rgba(0,0,0,0.25); padding:4px 0; font-size:.82rem; letter-spacing:3px; color:rgba(255,255,255,0.85); font-weight:700; text-transform:uppercase; }
+        .serie-val   { font-size:7rem; font-weight:900; font-family:'Oswald',sans-serif; line-height:1; padding:6px 0; }
+        .entrada-block { width:100%; background:rgba(255,255,255,0.06); border-radius:8px; border:1px solid var(--border); overflow:hidden; text-align:center; }
+        .entrada-hdr   { background:rgba(0,0,0,0.2); padding:3px 0; font-size:.78rem; letter-spacing:3px; color:var(--gray); font-weight:700; text-transform:uppercase; }
+        .entrada-val   { font-size:clamp(5rem, 10vw, 12rem); font-weight:900; font-family:'Oswald',sans-serif; color:var(--white); padding:3px 0; line-height:1; }
+        .brand-block { text-align:center; }
+        .brand-main  { font-size:1.1rem; font-weight:900; letter-spacing:3px; color:var(--blue2); font-family:'Oswald',sans-serif; }
+        .brand-sub   { font-size:.65rem; color:#4a78b0; letter-spacing:2px; font-weight:600; }
+
+        /* ── BARRA INFERIOR ── */
+        #bottom-bar {
+            height: 110px; background: #04070e;
+            border-top: 2px solid rgba(255,255,255,0.04);
+            flex-shrink: 0; position: relative;
+            display: flex; align-items: center; padding: 8px 14px;
+        }
+        #pausa-label { display:none; position:absolute; inset:0; pointer-events:none; z-index:10; }
+        #pausa-label.visible { display:block; }
+        #pausa-canvas { width:100%; height:100%; display:block; }
+
+        #seg-bar { width:100%; height:82px; display:flex; align-items:flex-end; gap:2px; }
+        .seg { flex:1; border-radius:3px 3px 2px 2px; transition:height .15s ease, opacity .2s; }
+        .seg.c-rojo  { background:#dd2020; box-shadow:0 0 4px rgba(221,32,32,.5); }
+        .seg.c-ambar { background:#e09020; box-shadow:0 0 4px rgba(224,144,32,.5); }
+        .seg.c-verde { background:#1eaa3a; box-shadow:0 0 4px rgba(30,170,58,.5); }
+        .seg.off     { background:#101828; box-shadow:none; opacity:.28; }
+
+        /* ── MODO TV ── */
+        body.modo-tv button, body.modo-tv .btn-main, body.modo-tv .btn-sec { display:none !important; }
+
+        /* ── ACTA ── */
+        #seccion-acta { display:none; color:black; background:white; }
+        @media print {
+            @page { size:portrait; margin:.5cm; }
+            html, body { background:white !important; color:black !important; display:block; height:auto; }
+            body * { visibility:hidden; }
+            #seccion-acta, #seccion-acta * { visibility:visible; }
+            #seccion-acta { display:block !important; position:absolute; left:0; right:0; top:0; width:18cm; margin:auto; color:black; background:white !important; padding:10px; }
+            .header-acta { text-align:center; border-bottom:2px solid black; margin-bottom:10px; }
+            table { width:100%; border-collapse:collapse; background:white !important; }
+            th, td { border:1px solid black; padding:3px; text-align:center; font-size:8.5pt; color:black !important; }
+            .firmas-acta { display:flex; justify-content:space-between; margin-top:50px; }
+            .firma-box { border-top:1px solid black; width:28%; text-align:center; padding-top:5px; font-size:9pt; font-weight:bold; }
+            .img-firma-print { width:100%; height:60px; object-fit:contain; }
+        }
+
+        /* ── MODAL FIRMAS ── */
+        #modal-firmas {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.98); display:none;
+            flex-direction:column; justify-content:center; align-items:center; z-index:10000;
+        }
+        .firma-instruccion { font-size:1.5rem; color:var(--gold); margin-bottom:10px; font-weight:bold; }
+        .canvas-container  { background:white; border-radius:10px; padding:10px; margin:20px 0; }
+        .canvas-firma { background:white; touch-action:none; cursor:crosshair; width:320px; height:200px; border:1px solid #ccc; display:block; }
+        .btn-main { background:var(--blue2); color:white; border:none; padding:12px 30px; font-size:1.2rem; font-weight:700; border-radius:50px; cursor:pointer; margin:10px 0; text-transform:uppercase; }
+        .btn-sec  { background:#222; color:#888; border:1px solid #444; padding:12px 20px; border-radius:5px; cursor:pointer; margin:5px; font-size:.8rem; }
+    </style>
+</head>
+<body id="main-body" class="modo-tv">
+
+<!-- WAIT -->
+<div id="waitScreen">
+    <div style="font-size:1.5rem;color:var(--gold);font-weight:900;letter-spacing:3px;font-family:'Oswald',sans-serif">BILLAR · 3 BANDAS</div>
+    <div style="font-size:.82rem;color:#2a3a50">Escanea para conectar el mando</div>
+    <div id="displayCode" class="code-txt">------</div>
+    <div class="qr-box" id="qrcode"></div>
+    <div style="color:#1a2a3a;font-size:.7rem">tenerife3bandas.com</div>
+</div>
+
+<!-- CALENTAMIENTO -->
+<div id="modal-warmup">
+    <div id="warmup-title">CALENTAMIENTO J1</div>
+    <div id="warmup-timer">05:00</div>
+    <button class="btn-sec" style="font-size:1.2rem;padding:16px 50px;border-radius:10px" onclick="handleCommand('skip-warmup')">SALTAR</button>
+</div>
+
+<!-- FIRMAS -->
+<div id="modal-firmas">
+    <div class="firma-instruccion" id="txt-paso-firma">Firma del Jugador A</div>
+    <div class="canvas-container">
+        <canvas id="canv-firma-unica" class="canvas-firma" width="320" height="200"></canvas>
+    </div>
+    <div style="display:flex;gap:10px;">
+        <button class="btn-sec" onclick="limpiarCanvasUnico()">Limpiar</button>
+        <button class="btn-main" id="btn-next-firma" onclick="siguientePasoFirma()" style="margin:0;padding:15px 30px;">SIGUIENTE</button>
+    </div>
+    <button class="btn-sec" onclick="cerrarFirmas()" style="margin-top:30px;color:red;border-color:red;">Cancelar</button>
+</div>
+
+<!-- HEADER: tres columnas con flex para centrado perfecto del crono -->
+<div id="header">
+    <div class="header-left">
+        <div class="club-name" id="display-club">CLUB</div>
+        <div class="club-sub">tenerife3bandas.com</div>
+    </div>
+    <div class="header-center">
+        <div id="display-tiempo">40</div>
+    </div>
+    <div class="header-right">
+        <div class="ent-lbl">ENTRADA</div>
+        <div class="ent-val"><span id="entrada-actual">1</span> / <span id="max-entradas">40</span></div>
+    </div>
+</div>
+
+<!-- CARDS + PANEL CENTRAL -->
+<div id="cards-area">
+
+    <div id="tab-1" class="card-jugador activo-1">
+        <input type="text" id="nom-1" class="nombre-display" value="JUGADOR A" readonly>
+        <div class="timeout-dots" id="dots-1">
+            <div class="to-dot to-on"></div>
+            <div class="to-dot to-on"></div>
+            <div class="to-dot to-on"></div>
+        </div>
+        <div class="puntos" id="pts-1">0</div>
+        <div class="stats-row">
+            <div class="stat-item"><span class="stat-lbl">PROMEDIO</span><span class="stat-val" id="prom-1">0.000</span></div>
+            <div class="stat-item"><span class="stat-lbl">SERIE MAY.</span><span class="stat-val" id="max-1">0</span></div>
+        </div>
+    </div>
+
+    <div id="panel-centro">
+        <div class="serie-block">
+            <div class="serie-hdr">SERIE</div>
+            <div class="serie-val" id="tacada-actual">0</div>
+        </div>
+        <div class="entrada-block">
+            <div class="entrada-hdr">ENTRADA</div>
+            <div class="entrada-val" id="inning-centro">1</div>
+        </div>
+        <div class="brand-block">
+            <div class="brand-main">3 BANDAS</div>
+            <div class="brand-sub">tenerife3bandas.com</div>
+        </div>
+    </div>
+
+    <div id="tab-2" class="card-jugador inactivo-2">
+        <input type="text" id="nom-2" class="nombre-display" value="JUGADOR B" readonly>
+        <div class="timeout-dots" id="dots-2">
+            <div class="to-dot to-on"></div>
+            <div class="to-dot to-on"></div>
+            <div class="to-dot to-on"></div>
+        </div>
+        <div class="puntos" id="pts-2">0</div>
+        <div class="stats-row">
+            <div class="stat-item"><span class="stat-lbl">PROMEDIO</span><span class="stat-val" id="prom-2">0.000</span></div>
+            <div class="stat-item"><span class="stat-lbl">SERIE MAY.</span><span class="stat-val" id="max-2">0</span></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- BARRA INFERIOR -->
+<div id="bottom-bar">
+    <div id="pausa-label"><canvas id="pausa-canvas"></canvas></div>
+    <div id="seg-bar"></div>
+</div>
+
+<!-- ACTA -->
+<div id="seccion-acta">
+    <div class="header-acta">
+        <h1 id="acta-club-nombre">CLUB</h1>
+        <p id="acta-fecha-hoy"></p>
+        <h2 id="acta-mesa-num">ACTA OFICIAL DE PARTIDA</h2>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+        <table style="width:48%"><tr><th>PTS</th><th>ENT</th><th>PROM</th><th>MAX</th></tr><tr><td id="sup-pts1">0</td><td id="sup-ent1">1</td><td id="sup-pr1">0,000</td><td id="sup-max1">0</td></tr></table>
+        <table style="width:48%"><tr><th>PTS</th><th>ENT</th><th>PROM</th><th>MAX</th></tr><tr><td id="sup-pts2">0</td><td id="sup-ent2">1</td><td id="sup-pr2">0,000</td><td id="sup-max2">0</td></tr></table>
+    </div>
+    <div style="display:flex;justify-content:space-between;">
+        <div style="width:48%"><div style="background:#eee;padding:5px;font-weight:bold;text-align:center;" id="acta-n1-txt">J1</div><table><thead><tr><th>E</th><th>P</th><th>A</th><th>E</th><th>P</th><th>A</th></tr></thead><tbody id="acta-j1"></tbody></table></div>
+        <div style="width:48%"><div style="background:#eee;padding:5px;font-weight:bold;text-align:center;" id="acta-n2-txt">J2</div><table><thead><tr><th>E</th><th>P</th><th>A</th><th>E</th><th>P</th><th>A</th></tr></thead><tbody id="acta-j2"></tbody></table></div>
+    </div>
+    <div class="firmas-acta">
+        <div class="firma-box"><img id="img-f1" class="img-firma-print"><br><span id="acta-nom1-firma">Firma Jugador A</span></div>
+        <div class="firma-box" style="border-top:2px solid black;width:35%"><img id="img-farb" class="img-firma-print"><br><span id="acta-arbitro-firma">ÁRBITRO</span></div>
+        <div class="firma-box"><img id="img-f2" class="img-firma-print"><br><span id="acta-nom2-firma">Firma Jugador B</span></div>
+    </div>
+</div>
+
+<audio id="sonido"><source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg"></audio>
+
+<script>
+    const N_SEGS = 40;
+    let mesaId = new URLSearchParams(window.location.search).get('mesa') || "1";
+
+    var state = {
+        pts1:0, pts2:0, max1:0, max2:0, tActual:0, entActual:1,
+        ptsMax:30, turno:1, pausa:true, tiempo:40, h1:[], h2:[],
+        nom1:"JUGADOR A", nom2:"JUGADOR B", club:"Club Billar", arbitro:"ÁRBITRO",
+        totalEnt:40, segMax:40, to1:3, to2:3,
+        iniciada:false, signatures:["","",""]
+    };
+    var historialEstados = [];
+    var peer = null, connections = [], reloj = null;
+
+    // ── BARRA ──
+    (function(){
+        const bar = document.getElementById('seg-bar');
+        for(let i=0; i<N_SEGS; i++){
+            const d = document.createElement('div');
+            d.id = 'seg-'+i;
+            d.className = 'seg '+(i<10?'c-rojo':i<20?'c-ambar':'c-verde');
+            d.style.height = '100%';
+            bar.appendChild(d);
+        }
+    })();
+
+    function renderSegBar(){
+        const segMax  = state.segMax || 40;
+        const elapsed = segMax - Math.max(state.tiempo, 0);
+        const apagados = Math.round((elapsed / segMax) * N_SEGS);
+        for(let i=0; i<N_SEGS; i++){
+            const el = document.getElementById('seg-'+i);
+            if(!el) continue;
+            if((N_SEGS-1-i) < apagados){
+                el.className = 'seg off'; el.style.height = '20%';
+            } else {
+                el.className = 'seg '+(i<10?'c-rojo':i<20?'c-ambar':'c-verde');
+                el.style.height = '100%';
+            }
+        }
+    }
+
+    // ── CANVAS PAUSA ──
+    function dibujarPausa(){
+        const bar = document.getElementById('bottom-bar');
+        const cv  = document.getElementById('pausa-canvas');
+        if(!cv||!bar) return;
+        const W=bar.offsetWidth, H=bar.offsetHeight;
+        if(W===0||H===0) return;
+        const dpr=window.devicePixelRatio||1;
+        cv.width=W*dpr; cv.height=H*dpr;
+        cv.style.width=W+'px'; cv.style.height=H+'px';
+        const ctx=cv.getContext('2d');
+        ctx.scale(dpr,dpr); ctx.clearRect(0,0,W,H);
+        const fs=Math.round(H*0.62);
+        ctx.font='900 italic '+fs+'px Oswald, sans-serif';
+        ctx.fillStyle='rgba(255,255,255,0.93)';
+        ctx.textBaseline='alphabetic'; ctx.textAlign='left';
+        const texto='PAUSA';
+        const tm=ctx.measureText(texto);
+        const txtW=tm.width;
+        const capH=tm.actualBoundingBoxAscent+tm.actualBoundingBoxDescent;
+        const txtCenterOffset=-tm.actualBoundingBoxAscent+capH/2;
+        const midY=H/2, baselineY=midY-txtCenterOffset;
+        const barH=capH, barW=capH*0.28, barGap=capH*0.20;
+        const iconW=barW*2+barGap, gap=capH*0.40;
+        const totalW=iconW+gap+txtW;
+        const startX=(W-totalW)/2;
+        ctx.fillRect(startX,              midY-barH/2, barW, barH);
+        ctx.fillRect(startX+barW+barGap,  midY-barH/2, barW, barH);
+        ctx.fillText(texto, startX+iconW+gap, baselineY);
+    }
+    window.addEventListener('resize', ()=>{ if(state.pausa&&state.iniciada) dibujarPausa(); });
+
+    // ── P2P ──
+    function initP2P(){
+        const code = Math.floor(100000+Math.random()*900000).toString();
+        document.getElementById('displayCode').innerText = code;
+        peer = new Peer('billar-'+code, {
+            config:{ iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}] }
+        });
+        peer.on('open', ()=>{
+            const folder = window.location.pathname.substring(0,window.location.pathname.lastIndexOf('/')+1);
+            const urlMando = window.location.origin+folder+'mando.html?code='+code+'&mesa='+mesaId;
+            new QRCode(document.getElementById("qrcode"),{text:urlMando,width:200,height:200});
+        });
+        peer.on('connection', conn=>{
+            connections.push(conn);
+            document.getElementById('waitScreen').style.display='none';
+            conn.on('data', data=>{
+                if(data.type==='ping'){ try{conn.send({type:'pong'});}catch(e){} return; }
+                if(data.type==='cmd') handleCommand(data.cmd, data.val);
+                if(data.type==='sync_cfg'){ Object.assign(state,data.cfg); render(); }
+                if(data.type==='print_acta') imprimirActa(data.signs);
+            });
+            broadcast();
+        });
+    }
+
+    // ── HANDLE COMMAND ──
+    function handleCommand(cmd, val){
+        if(cmd==='start'){
+            document.getElementById('modal-warmup').style.display='none';
+            Object.assign(state,val);
+            state.turno=1; state.pts1=0; state.pts2=0; state.entActual=1;
+            state.tActual=0; state.max1=0; state.max2=0; state.h1=[]; state.h2=[];
+            state.iniciada=true; state.pausa=true;
+            iniciarReloj();
+            document.getElementById('waitScreen').style.display='none';
+            render(); broadcast(); return;
+        }
+        if(cmd==='plus'){
+            guardarEstado();
+            if(state.turno===1){ state.pts1++; if(state.tActual+1>state.max1) state.max1=state.tActual+1; }
+            else                { state.pts2++; if(state.tActual+1>state.max2) state.max2=state.tActual+1; }
+            state.tActual++;
+            // Reset crono y poner en pausa al anotar
+            state.tiempo=state.segMax; state.pausa=true;
+        }
+        if(cmd==='add-manual'){
+            guardarEstado();
+            if(val.jugador===1){
+                state.pts1++;
+                if(state.turno===1){ state.tActual++; if(state.tActual>state.max1) state.max1=state.tActual; }
+            } else {
+                state.pts2++;
+                if(state.turno===2){ state.tActual++; if(state.tActual>state.max2) state.max2=state.tActual; }
+            }
+            // Reset crono y poner en pausa al anotar
+            state.tiempo=state.segMax; state.pausa=true;
+        }
+        if(cmd==='to'){
+            if(state.turno===1&&state.to1>0){ state.to1--; state.tiempo=state.segMax; state.pausa=true; }
+            else if(state.turno===2&&state.to2>0){ state.to2--; state.tiempo=state.segMax; state.pausa=true; }
+        }
+        if(cmd==='warmup'){
+            state.iniciada=true; state.pausa=false; state.segMax=300; state.tiempo=300;
+            if(val&&val.jugador) state.turno=val.jugador;
+            iniciarReloj(); render(); return;
+        }
+        if(cmd==='skip-warmup'){ state.tiempo=0; state.pausa=true; render(); return; }
+        if(cmd==='minus'){
+            guardarEstado();
+            // J1
+            if(val===1 && state.pts1>0){
+                state.pts1--;
+                if(state.turno===1 && state.tActual>0){
+                    // Turno activo: solo reducir la serie en curso (el historial aún no se ha escrito)
+                    state.tActual--;
+                } else if(state.turno!==1 && state.h1.length>0){
+                    // Turno ya comprometido: corregir la última entrada del historial
+                    var ult1 = state.h1[state.h1.length-1];
+                    if(ult1.p > 0) ult1.p--;
+                    ult1.a = state.pts1;
+                }
+            }
+            // J2
+            if(val===2 && state.pts2>0){
+                state.pts2--;
+                if(state.turno===2 && state.tActual>0){
+                    state.tActual--;
+                } else if(state.turno!==2 && state.h2.length>0){
+                    var ult2 = state.h2[state.h2.length-1];
+                    if(ult2.p > 0) ult2.p--;
+                    ult2.a = state.pts2;
+                }
+            }
+        }
+        if(cmd==='next'){
+            guardarEstado();
+            // Guardar la entrada en el historial CON los puntos actuales correctos
+            var dato = {
+                e: state.entActual,
+                p: state.tActual,
+                a: state.turno===1 ? state.pts1 : state.pts2
+            };
+            if(state.turno===1) state.h1.push(dato); else state.h2.push(dato);
+            state.tActual=0;
+            if(state.turno===2) state.entActual++;
+            state.turno=(state.turno===1)?2:1;
+            // Reset crono y poner en pausa al cambiar turno
+            state.tiempo=state.segMax; state.pausa=true;
+        }
+        if(cmd==='pause') state.pausa=!state.pausa;
+        if(cmd==='reset'){
+            state.iniciada=false;
+            connections.forEach(c=>{ if(c.open) c.send({type:'force_reconnect'}); });
+            setTimeout(()=>{ location.reload(); },500);
+        }
+        if(cmd==='undo') deshacerAccion();
+        render(); broadcast();
+    }
+
+    function iniciarReloj(){
+        if(reloj) clearInterval(reloj);
+        reloj=setInterval(()=>{
+            if(!state.pausa&&state.iniciada){
+                state.tiempo--;
+                if(state.tiempo<=0){ state.tiempo=0; try{document.getElementById('sonido').play();}catch(e){} }
+                render(); broadcast();
+            }
+        },1000);
+    }
+
+    // ── RENDER ──
+    function render(){
+        const modal=document.getElementById('modal-warmup');
+        if(state.segMax===300&&state.iniciada&&state.tiempo>0){
+            modal.style.display='flex';
+            let m=Math.floor(state.tiempo/60),s=state.tiempo%60;
+            document.getElementById('warmup-timer').innerText=m+":"+(s<10?"0"+s:s);
+            document.getElementById('warmup-title').innerText="CALENTAMIENTO "+(state.turno===1?state.nom1:state.nom2);
+            return;
+        } else { if(modal) modal.style.display='none'; }
+
+        document.getElementById('pts-1').innerText        = state.pts1;
+        document.getElementById('pts-2').innerText        = state.pts2;
+        document.getElementById('max-1').innerText        = state.max1;
+        document.getElementById('max-2').innerText        = state.max2;
+        document.getElementById('tacada-actual').innerText = state.tActual;
+        document.getElementById('entrada-actual').innerText= state.entActual;
+        document.getElementById('inning-centro').innerText = state.entActual;
+        document.getElementById('max-entradas').innerText  = state.totalEnt;
+        document.getElementById('nom-1').value             = state.nom1;
+        document.getElementById('nom-2').value             = state.nom2;
+        document.getElementById('display-club').innerText  = state.club;
+
+        const dtEl=document.getElementById('display-tiempo');
+        dtEl.innerText=state.tiempo;
+        dtEl.className=(state.tiempo<=5&&!state.pausa)?'critico':'';
+
+        // Promedios (entActual se incrementa DESPUÉS de que J2 juega)
+        // Para J1: sus entradas = entActual (ya jugó en la entrada actual si turno=2, o entActual-1 si turno=1)
+        // Usamos h1.length y h2.length para el promedio real
+        const ent1=Math.max(1, state.h1.length);
+        const ent2=Math.max(1, state.h2.length);
+        document.getElementById('prom-1').innerText=(state.pts1/ent1).toFixed(3);
+        document.getElementById('prom-2').innerText=(state.pts2/ent2).toFixed(3);
+
+        document.getElementById('tab-1').className='card-jugador '+(state.turno===1?'activo-1':'inactivo-1');
+        document.getElementById('tab-2').className='card-jugador '+(state.turno===2?'activo-2':'inactivo-2');
+
+        const updateDots=(id,val)=>{
+            const dots=document.getElementById(id).children;
+            if(!dots) return;
+            for(let i=0;i<3;i++) if(dots[i]) dots[i].className=i<val?"to-dot to-on":"to-dot";
+        };
+        updateDots('dots-1',state.to1);
+        updateDots('dots-2',state.to2);
+
+        renderSegBar();
+
+        const pl=document.getElementById('pausa-label');
+        if(state.pausa&&state.iniciada){ pl.className='visible'; dibujarPausa(); }
+        else pl.className='';
+    }
+
+    function guardarEstado(){ historialEstados.push(JSON.stringify(state)); }
+    function deshacerAccion(){ if(historialEstados.length>0) state=JSON.parse(historialEstados.pop()); }
+    function broadcast(){ connections.forEach(c=>{ if(c.open) c.send({type:'state',state:state}); }); }
+
+    // ── FIRMAS ──
+    var pasoFirma=1, signaturesLocal=["","",""];
+    var ctxFirma, dibujando=false;
+    function abrirFirmas(){ pasoFirma=1; signaturesLocal=["","",""]; document.getElementById('modal-firmas').style.display='flex'; setupCanvasUnico(); updateTxtFirma(); }
+    function cerrarFirmas(){ document.getElementById('modal-firmas').style.display='none'; }
+    function updateTxtFirma(){ const txts=["Firma de: "+state.nom1,"Firma de: "+(state.arbitro||'Árbitro'),"Firma de: "+state.nom2]; document.getElementById('txt-paso-firma').innerText=txts[pasoFirma-1]||"Firma"; }
+    function siguientePasoFirma(){ signaturesLocal[pasoFirma-1]=document.getElementById('canv-firma-unica').toDataURL(); if(pasoFirma<3){pasoFirma++;limpiarCanvasUnico();updateTxtFirma();}else{cerrarFirmas();imprimirActa(signaturesLocal);} }
+    function setupCanvasUnico(){
+        const cv=document.getElementById('canv-firma-unica');
+        cv.width=320; cv.height=200; ctxFirma=cv.getContext('2d'); ctxFirma.lineWidth=2; ctxFirma.strokeStyle='black';
+        const getP=e=>{ const r=cv.getBoundingClientRect(),sx=cv.width/r.width,sy=cv.height/r.height,cx=e.touches?e.touches[0].clientX:e.clientX,cy=e.touches?e.touches[0].clientY:e.clientY; return{x:(cx-r.left)*sx,y:(cy-r.top)*sy}; };
+        cv.ontouchstart=cv.onmousedown=e=>{ dibujando=true;const p=getP(e);ctxFirma.beginPath();ctxFirma.moveTo(p.x,p.y); };
+        cv.ontouchmove=cv.onmousemove=e=>{ if(!dibujando)return;e.preventDefault();const p=getP(e);ctxFirma.lineTo(p.x,p.y);ctxFirma.stroke(); };
+        cv.ontouchend=cv.onmouseup=()=>{ dibujando=false; };
+    }
+    function limpiarCanvasUnico(){ if(ctxFirma)ctxFirma.clearRect(0,0,320,200); }
+
+    function imprimirActa(signs){
+        document.getElementById('acta-club-nombre').innerText = state.club;
+        document.getElementById('acta-fecha-hoy').innerText   = "Fecha: "+new Date().toLocaleDateString();
+        document.getElementById('acta-mesa-num').innerText    = "ACTA OFICIAL DE PARTIDA";
+        document.getElementById('acta-n1-txt').innerText      = state.nom1;
+        document.getElementById('acta-n2-txt').innerText      = state.nom2;
+        document.getElementById('acta-nom1-firma').innerText  = state.nom1;
+        document.getElementById('acta-nom2-firma').innerText  = state.nom2;
+        document.getElementById('acta-arbitro-firma').innerText = state.arbitro || 'ÁRBITRO';
+        document.getElementById('sup-pts1').innerText = state.pts1;
+        document.getElementById('sup-pts2').innerText = state.pts2;
+        // Entradas reales desde historial
+        const ent1=Math.max(1,state.h1.length), ent2=Math.max(1,state.h2.length);
+        document.getElementById('sup-ent1').innerText = ent1;
+        document.getElementById('sup-ent2').innerText = ent2;
+        document.getElementById('sup-pr1').innerText  = (state.pts1/ent1).toFixed(3).replace('.',',');
+        document.getElementById('sup-pr2').innerText  = (state.pts2/ent2).toFixed(3).replace('.',',');
+        document.getElementById('sup-max1').innerText = state.max1;
+        document.getElementById('sup-max2').innerText = state.max2;
+        if(signs){ document.getElementById('img-f1').src=signs[0]; document.getElementById('img-farb').src=signs[1]; document.getElementById('img-f2').src=signs[2]; }
+        function construir(hist){
+            var filas="";
+            for(var i=0;i<20;i++){
+                var p1="-",a1="-",p2="-",a2="-";
+                if(hist[i]){p1=(hist[i].p===0)?"-":hist[i].p; a1=(hist[i].p===0)?"-":hist[i].a;}
+                if(hist[i+20]){p2=(hist[i+20].p===0)?"-":hist[i+20].p; a2=(hist[i+20].p===0)?"-":hist[i+20].a;}
+                filas+="<tr><td>"+(i+1)+"</td><td>"+p1+"</td><td>"+a1+"</td><td>"+(i+21)+"</td><td>"+p2+"</td><td>"+a2+"</td></tr>";
+            }
+            return filas;
+        }
+        document.getElementById('acta-j1').innerHTML=construir(state.h1);
+        document.getElementById('acta-j2').innerHTML=construir(state.h2);
+        window.print();
+    }
+
+    window.onload=initP2P;
+</script>
+</body>
+</html>

@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <title>Mando Billar · 3 Bandas</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+        * { box-sizing:border-box; margin:0; padding:0; touch-action:manipulation; }
+        body { background:#05070a; color:#c8d8e8; font-family:'Segoe UI',sans-serif;
+               padding:12px; min-height:100vh; -webkit-text-size-adjust:100%; }
+
+        #st { font-size:.78rem; text-align:center; margin-bottom:8px;
+              color:#ffcc00; padding:4px; border-radius:4px; }
+
+        #config-panel, #modal-firmas {
+            position:fixed; inset:0; background:#05070a;
+            z-index:1000; padding:16px; overflow-y:auto;
+        }
+        .cfg-lbl { font-size:.72rem; color:#7090b0; margin:10px 0 3px;
+                   text-transform:uppercase; letter-spacing:1px; font-weight:700; display:block; }
+        input[type=text], input[type=number] {
+            background:#0a0e18; border:1px solid #1e2a3e; color:#ddeeff;
+            padding:10px 12px; width:100%; border-radius:6px; font-size:.93rem; margin-bottom:2px;
+        }
+        h2 { color:#ffcc00; text-align:center; letter-spacing:3px; font-size:.93rem; margin-bottom:12px; }
+
+        .btn { border:none; padding:13px; border-radius:9px; font-size:.93rem; font-weight:700;
+               width:100%; color:white; cursor:pointer; text-transform:uppercase; margin-top:7px;
+               transition:filter .1s, transform .1s; letter-spacing:.5px; }
+        .btn:active { filter:brightness(.72); transform:scale(.97); }
+        .btn-blue   { background:#0050cc; }
+        .btn-green  { background:#145c2a; }
+        .btn-orange { background:#8a3e08; }
+        .btn-red    { background:#880808; }
+        .btn-yellow { background:#604808; color:#f0d060; }
+        .btn-sec    { background:#2C2966; }
+        .btn-big    { font-size:1.35rem; padding:20px; margin-top:14px; }
+
+        /* Cards J1 / J2 */
+        #score-row { display:flex; gap:8px; margin-bottom:4px; }
+        .score-btn { flex:1; border:2px solid #1a3060; border-radius:10px;
+                     padding:18px 6px; text-align:center; cursor:pointer;
+                     transition:all .2s; border:none; }
+        .score-btn .jn { font-size:.82rem; text-transform:uppercase; letter-spacing:1px;
+                         font-weight:700; margin-bottom:4px; display:block; }
+        .score-btn .jp { font-size:4.8rem; font-weight:900; line-height:1.1; display:block; }
+
+        .j1-activo   { background:#fff; border:2px solid #2288ee !important; box-shadow:0 0 10px rgba(34,136,238,.3); }
+        .j1-activo .jn { color:#2a5a9a; } .j1-activo .jp { color:#0a4a96; }
+        .j1-inactivo { background:#0a1830; border:2px solid #1a3060 !important; }
+        .j1-inactivo .jn { color:#6080a0; } .j1-inactivo .jp { color:#fff; }
+
+        .j2-activo   { background:#f5d020; border:2px solid #f0c040 !important; box-shadow:0 0 10px rgba(240,192,64,.35); }
+        .j2-activo .jn { color:#2a5a9a; } .j2-activo .jp { color:#0a3a80; }
+        .j2-inactivo { background:#0a1830; border:2px solid #1a3060 !important; }
+        .j2-inactivo .jn { color:#806020; } .j2-inactivo .jp { color:#f0c040; }
+
+        /* Time-out pips */
+        .to-row { display:flex; justify-content:center; gap:8px; margin:4px 0 8px; }
+        .to-pip { width:22px; height:8px; border-radius:4px; background:#1a0000; transition:all .3s; }
+        .to-pip.on { background:#ffcc00; box-shadow:0 0 6px #ffcc00; }
+
+        /* Turno strip */
+        .turno-strip { background:#060810; border:1px solid #101828; border-radius:8px;
+                       padding:8px 10px; margin-bottom:8px; text-align:center; }
+        .turno-nom { font-size:1.1rem; font-weight:900; color:#ffcc00; }
+        .turno-lbl { font-size:.62rem; color:#607080; letter-spacing:2px;
+                     text-transform:uppercase; font-weight:700; }
+
+        /* Crono */
+        .crono-sec { background:#07090f; border:1px solid #141c28; border-radius:10px;
+                     padding:10px; margin-bottom:8px; }
+        .crono-tit  { font-size:.68rem; letter-spacing:2px; color:#6080a0;
+                      text-transform:uppercase; text-align:center; margin-bottom:6px; font-weight:700; }
+        .crono-disp { background:#000; border:2px solid #0c1830; border-radius:8px;
+                      text-align:center; padding:5px 0; margin-bottom:6px; }
+        .cn         { font-size:2.6rem; font-weight:900; font-family:monospace; line-height:1; }
+        .cn-gold    { color:#ffcc00; }
+        .cn-green   { color:#22cc66; }
+        .cn-red     { color:#e03030; animation:bl .6s infinite; }
+        @keyframes bl { 0%,100%{opacity:1} 50%{opacity:.3} }
+        .cn-sub     { font-size:.6rem; color:#506070; letter-spacing:2px; margin-top:1px; font-weight:600; }
+
+        /* Barra canvas */
+        #seg-wrap   { height:56px; margin-bottom:8px; border-radius:8px; overflow:hidden; }
+        #seg-canvas { width:100%; height:100%; display:block; }
+
+        /* Acciones grid */
+        .acc { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px; }
+        .acc .btn { margin:0; padding:12px 4px; font-size:.82rem; }
+
+        /* Firmas */
+        .cv-wrap { background:white; border-radius:10px; padding:5px; margin:12px auto; width:290px; }
+        .firma-cv { background:white; touch-action:none; border:1px solid #ccc;
+                    display:block; width:280px; height:200px; }
+        .f-row { display:flex; gap:7px; }
+        .f-row .btn { flex:1; padding:13px; margin:0; }
+    </style>
+</head>
+<body>
+
+<div id="st">Conectando…</div>
+
+<!-- ═══ CONFIG ═══ -->
+<div id="config-panel" style="display:none">
+    <h2>CONFIGURACION</h2>
+    <span class="cfg-lbl">Club</span>
+    <input type="text" id="cfg-club" value="Club Billar">
+    <span class="cfg-lbl">Jugador A</span>
+    <input type="text" id="cfg-nom1" value="JUGADOR A">
+    <span class="cfg-lbl">Jugador B</span>
+    <input type="text" id="cfg-nom2" value="JUGADOR B">
+    <span class="cfg-lbl">Árbitro</span>
+    <input type="text" id="cfg-arbitro" value="ÁRBITRO">
+    <span class="cfg-lbl">Entradas</span>
+    <input type="number" id="cfg-entradas" value="40">
+    <span class="cfg-lbl">Segundos crono</span>
+    <input type="number" id="cfg-segundos" value="40">
+    <span class="cfg-lbl">Time Outs</span>
+    <input type="number" id="cfg-timeouts" value="3">
+    <button id="btn-wseq" class="btn btn-blue" style="margin-bottom:12px" onclick="controlWarmup()">
+        INICIAR CALENTAMIENTO (J1)
+    </button>
+    <button class="btn btn-big btn-blue" onclick="startPartida()">EMPEZAR PARTIDA</button>
+</div>
+
+<!-- ═══ FIRMAS ═══ -->
+<div id="modal-firmas" style="display:none">
+    <h3 id="f-titulo" style="color:#ffcc00;text-align:center;margin-bottom:10px">Firma J1</h3>
+    <div class="cv-wrap">
+        <canvas id="cv-firma" class="firma-cv" width="280" height="200"></canvas>
+    </div>
+    <div class="f-row">
+        <button class="btn btn-sec" style="margin:0" onclick="limpiarFirma()">Limpiar</button>
+        <button class="btn btn-blue" style="margin:0" onclick="nextFirma()">SIGUIENTE</button>
+    </div>
+    <button class="btn btn-red" style="margin-top:8px"
+            onclick="document.getElementById('modal-firmas').style.display='none'">Cancelar</button>
+</div>
+
+<!-- ═══ GAME ═══ -->
+<div id="game-panel" style="display:none">
+
+    <div class="turno-strip">
+        <div class="turno-lbl">TURNO ACTIVO</div>
+        <div class="turno-nom" id="g-turno">—</div>
+    </div>
+
+    <!-- Marcadores J1 / J2 -->
+    <div id="score-row">
+        <div style="flex:1;display:flex;flex-direction:column">
+            <button id="btn-j1" class="score-btn j1-activo"
+                    onclick="snd('add-manual',{jugador:1})" style="margin:0;width:100%">
+                <span class="jn" id="g-nom1">JUGADOR A</span>
+                <span class="jp" id="g-pts1">0</span>
+            </button>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column">
+            <button id="btn-j2" class="score-btn j2-inactivo"
+                    onclick="snd('add-manual',{jugador:2})" style="margin:0;width:100%">
+                <span class="jn" id="g-nom2">JUGADOR B</span>
+                <span class="jp" id="g-pts2">0</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Time-outs -->
+    <div style="display:flex;gap:8px">
+        <div class="to-row" id="to-row-1" style="flex:1">
+            <div class="to-pip on"></div><div class="to-pip on"></div><div class="to-pip on"></div>
+        </div>
+        <div class="to-row" id="to-row-2" style="flex:1">
+            <div class="to-pip on"></div><div class="to-pip on"></div><div class="to-pip on"></div>
+        </div>
+    </div>
+
+    <!-- Crono disparo -->
+    <div class="crono-sec">
+        <div class="crono-tit">CRONO DISPARO</div>
+        <div class="crono-disp" style="display:flex;gap:0;padding:0;">
+            <div style="flex:1;padding:5px 0;border-right:1px solid #0c1830;text-align:center;">
+                <div id="g-crono" class="cn cn-gold">40</div>
+                <div class="cn-sub">SEGUNDOS</div>
+            </div>
+            <div style="flex:1;padding:5px 0;text-align:center;">
+                <div id="m-entrada" class="cn" style="color:#a0c8ff;">1</div>
+                <div class="cn-sub">ENTRADA</div>
+            </div>
+        </div>
+        <div id="seg-wrap"><canvas id="seg-canvas"></canvas></div>
+    </div>
+
+    <!-- Botones principales en cuadrícula 2 columnas cuadrados -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <button id="btn-pausa" class="btn btn-green"
+                style="margin:0;aspect-ratio:1;font-size:1rem;padding:10px;"
+                onclick="snd('pause')">REANUDAR</button>
+        <button class="btn btn-green"
+                style="margin:0;aspect-ratio:1;font-size:1rem;padding:10px;"
+                onclick="snd('next')">CAMBIO TURNO</button>
+    </div>
+
+    <!-- Acciones -->
+    <div class="acc">
+        <button class="btn btn-orange" onclick="snd('to')">TIME OUT</button>
+        <button class="btn btn-yellow" onclick="restar1()">RESTAR 1</button>
+        <button class="btn btn-sec"    onclick="snd('undo')">DESHACER</button>
+        <button class="btn btn-sec"    onclick="abrirFirmas()">ACTA / FIRMAS</button>
+        <button class="btn btn-red"    style="grid-column:span 2" onclick="resetear()">RESET</button>
+    </div>
+
+</div>
+
+<script>
+// ─── Variables globales (var para que sean accesibles desde onclick) ───────────
+var code  = new URLSearchParams(window.location.search).get('code');
+var state = {
+    pts1:0, pts2:0, turno:1, tiempo:40, segMax:40, pausa:true,
+    nom1:'JUGADOR A', nom2:'JUGADOR B', to1:3, to2:3,
+    entActual:1, iniciada:false, h1:[], h2:[]
+};
+
+var p = null, c = null;
+var heartbeatIv = null, reconnectTm = null, connecting = false;
+
+// Firmas
+var firStep=0, firSigns=['','',''], firCtx=null, firDrawing=false;
+
+// ─── enJuego persiste en sessionStorage ────────────────────────────────────────
+function isEnJuego()   { return sessionStorage.getItem('ejg') === '1'; }
+function setEnJuego()  { sessionStorage.setItem('ejg','1'); }
+function clearEnJuego(){ sessionStorage.removeItem('ejg'); }
+
+// ─── Conexión ──────────────────────────────────────────────────────────────────
+function connect(){
+    if(connecting) return;
+    connecting = true;
+    stopHB();
+    if(reconnectTm){ clearTimeout(reconnectTm); reconnectTm=null; }
+    if(p){ try{ p.destroy(); }catch(e){} p=null; c=null; }
+
+    p = new Peer(undefined, {
+        config:{ iceServers:[
+            {urls:'stun:stun.l.google.com:19302'},
+            {urls:'stun:stun1.l.google.com:19302'}
+        ]}
+    });
+
+    p.on('open', function(){
+        connecting = false;
+        st('Conectando al marcador…','#f0a020');
+        c = p.connect('billar-' + code, {reliable:true});
+        c.on('open', function(){
+            st('CONECTADO','#22cc66');
+            startHB();
+            mostrarPanel();
+        });
+        c.on('data', onData);
+        c.on('close', function(){ recon('Desconectado'); });
+        c.on('error', function(){ recon('Error conexion'); });
+    });
+
+    p.on('disconnected', function(){
+        connecting = false;
+        try{ p.reconnect(); }catch(e){ recon('Desconectado'); }
+    });
+
+    p.on('error', function(err){
+        connecting = false;
+        if(err.type === 'peer-unavailable'){
+            recon('Esperando marcador…', 5000);
+        } else {
+            recon('Error P2P', 4000);
+        }
+    });
+}
+
+function onData(d){
+    if(d.type === 'pong') return;
+    if(d.type === 'force_reconnect'){
+        clearEnJuego();
+        location.href = location.pathname;
+        return;
+    }
+    if(d.type === 'state'){
+        state = d.state;
+        if(state.iniciada && state.segMax !== 300) setEnJuego();
+        mostrarPanel();
+        renderGame();
+    }
+}
+
+function mostrarPanel(){
+    var game = isEnJuego();
+    document.getElementById('config-panel').style.display = game ? 'none'  : 'block';
+    document.getElementById('game-panel').style.display   = game ? 'block' : 'none';
+}
+
+function recon(msg, delay){
+    if(!delay) delay = 3000;
+    st(msg + ' — reintentando…', '#e03030');
+    stopHB();
+    connecting = false;
+    if(reconnectTm) clearTimeout(reconnectTm);
+    reconnectTm = setTimeout(connect, delay);
+}
+
+function startHB(){
+    stopHB();
+    heartbeatIv = setInterval(function(){
+        if(c && c.open){
+            try{ c.send({type:'ping'}); }catch(e){ recon('Heartbeat'); }
+        } else {
+            recon('Sin conexion');
+        }
+    }, 25000);
+}
+function stopHB(){
+    if(heartbeatIv){ clearInterval(heartbeatIv); heartbeatIv=null; }
+}
+
+function st(msg, col){
+    var e = document.getElementById('st');
+    e.innerText = msg; e.style.color = col;
+}
+
+function snd(cmd, val){
+    if(c && c.open) try{ c.send({type:'cmd', cmd:cmd, val:val}); }catch(e){}
+}
+
+// ─── Arranque partida ──────────────────────────────────────────────────────────
+function startPartida(){
+    setEnJuego();
+    var cfg = {
+        club:     document.getElementById('cfg-club').value,
+        nom1:     document.getElementById('cfg-nom1').value,
+        nom2:     document.getElementById('cfg-nom2').value,
+        arbitro:  document.getElementById('cfg-arbitro').value || 'ÁRBITRO',
+        totalEnt: parseInt(document.getElementById('cfg-entradas').value) || 40,
+        segMax:   parseInt(document.getElementById('cfg-segundos').value) || 40,
+        tiempo:   parseInt(document.getElementById('cfg-segundos').value) || 40,
+        to1:      parseInt(document.getElementById('cfg-timeouts').value) || 3,
+        to2:      parseInt(document.getElementById('cfg-timeouts').value) || 3,
+        iniciada: true, tActual: 0
+    };
+    // Actualizar state local para render inmediato antes de que llegue el broadcast
+    Object.assign(state, cfg);
+    state.turno=1; state.pts1=0; state.pts2=0; state.pausa=true;
+    state.h1=[]; state.h2=[];
+    mostrarPanel();
+    renderGame();
+    snd('start', cfg);
+}
+
+function resetear(){
+    clearEnJuego();
+    snd('reset');
+}
+
+function restar1(){
+    snd('minus', state.turno);
+}
+
+function controlWarmup(){
+    if(state.segMax !== 300) snd('warmup', {jugador:1});
+    else if(state.turno === 1) snd('warmup', {jugador:2});
+    else snd('skip-warmup');
+}
+
+// ─── Render ────────────────────────────────────────────────────────────────────
+function renderGame(){
+    setTxt('g-nom1',  state.nom1 || 'J1');
+    setTxt('g-nom2',  state.nom2 || 'J2');
+    setTxt('g-pts1',  state.pts1);
+    setTxt('g-pts2',  state.pts2);
+    setTxt('g-turno', state.turno === 1 ? (state.nom1||'J1') : (state.nom2||'J2'));
+
+    // Colores cards
+    setCls('btn-j1', 'score-btn ' + (state.turno===1 ? 'j1-activo' : 'j1-inactivo'));
+    setCls('btn-j2', 'score-btn ' + (state.turno===2 ? 'j2-activo' : 'j2-inactivo'));
+
+    // Time-outs
+    renderTO('to-row-1', state.to1);
+    renderTO('to-row-2', state.to2);
+
+    // Crono
+    var cr = document.getElementById('g-crono');
+    if(cr){
+        cr.innerText = state.tiempo || 0;
+        cr.className = 'cn ' + (state.tiempo <= 5 ? 'cn-red' : state.pausa ? 'cn-gold' : 'cn-green');
+    }
+
+    // Entrada en el crono
+    var me = document.getElementById('m-entrada');
+    if(me) me.innerText = state.entActual || 1;
+
+    // Barra + PAUSA
+    requestAnimationFrame(dibujarBarra);
+
+    // Botón pausa/reanudar
+    var bp = document.getElementById('btn-pausa');
+    if(bp){
+        bp.innerText  = state.pausa ? 'REANUDAR' : 'PAUSA';
+        bp.className  = 'btn ' + (state.pausa ? 'btn-green' : 'btn-blue');
+        bp.style.cssText = 'margin:0;aspect-ratio:1;font-size:1rem;padding:10px;';
+    }
+
+    // Warmup btn texto
+    var bw = document.getElementById('btn-wseq');
+    if(bw){
+        if(state.segMax === 300){
+            bw.innerText = state.turno===1 ? 'SALTAR J1 → J2' : 'SALTAR J2 → LISTO';
+            bw.style.background = state.turno===1 ? '#e67e22' : '#27ae60';
+        } else {
+            bw.innerText = 'INICIAR CALENTAMIENTO (J1)';
+            bw.style.background = '#0050cc';
+        }
+    }
+}
+
+function renderTO(id, val){
+    var row = document.getElementById(id);
+    if(!row) return;
+    var pips = row.querySelectorAll('.to-pip');
+    for(var i=0; i<pips.length; i++){
+        pips[i].className = 'to-pip' + (i < (val||0) ? ' on' : '');
+    }
+}
+
+function setTxt(id, v){ var e=document.getElementById(id); if(e) e.innerText=v; }
+function setCls(id, c){ var e=document.getElementById(id); if(e) e.className=c; }
+
+// ─── Canvas: segmentos + PAUSA ────────────────────────────────────────────────
+function dibujarBarra(){
+    var wrap = document.getElementById('seg-wrap');
+    var cv   = document.getElementById('seg-canvas');
+    if(!cv || !wrap) return;
+    var W = wrap.offsetWidth, H = wrap.offsetHeight;
+    if(W < 10 || H < 10) return;
+
+    var dpr = window.devicePixelRatio || 1;
+    cv.width  = W * dpr;
+    cv.height = H * dpr;
+    cv.style.width  = W + 'px';
+    cv.style.height = H + 'px';
+
+    var ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    // 1. Fondo
+    ctx.fillStyle = '#04070e';
+    ctx.fillRect(0, 0, W, H);
+
+    // 2. Segmentos
+    var N = 40;
+    var segMax  = state.segMax || 40;
+    var elapsed = segMax - Math.max(state.tiempo, 0);
+    var apagados = Math.round((elapsed / segMax) * N);
+    var pad = 5, gap = 2;
+    var segW = (W - pad*2 - gap*(N-1)) / N;
+    var maxH = H - pad*2;
+
+    for(var i=0; i<N; i++){
+        var off = (N - 1 - i) < apagados;
+        var x   = pad + i*(segW + gap);
+        if(off){
+            ctx.fillStyle = 'rgba(16,24,40,0.5)';
+            var sh = maxH * 0.2;
+            ctx.fillRect(x, H-pad-sh, segW, sh);
+        } else {
+            ctx.fillStyle = i<10 ? '#dd2020' : i<20 ? '#e09020' : '#1eaa3a';
+            ctx.fillRect(x, pad, segW, maxH);
+        }
+    }
+
+    // 3. Overlay PAUSA si procede
+    if(state.pausa){
+        ctx.fillStyle = 'rgba(4,7,14,0.38)';
+        ctx.fillRect(0, 0, W, H);
+
+        var fs = Math.round(H * 0.50);
+        ctx.font = '900 italic ' + fs + 'px "Segoe UI",Arial,sans-serif';
+        ctx.textBaseline = 'alphabetic';
+        ctx.textAlign    = 'left';
+        var txt = 'PAUSA';
+        var tm  = ctx.measureText(txt);
+        var capH   = tm.actualBoundingBoxAscent + tm.actualBoundingBoxDescent;
+        var midY   = H / 2;
+        var bH=capH, bW=capH*0.26, bGap=capH*0.18;
+        var iconW=bW*2+bGap, gapIT=capH*0.38;
+        var sx = (W - (iconW + gapIT + tm.width)) / 2;
+
+        ctx.shadowColor = 'rgba(0,0,0,0.95)';
+        ctx.shadowBlur  = 12;
+        ctx.fillStyle   = 'rgba(255,255,255,0.97)';
+        ctx.fillRect(sx,         midY - bH/2, bW, bH);
+        ctx.fillRect(sx+bW+bGap, midY - bH/2, bW, bH);
+        ctx.fillText(txt, sx+iconW+gapIT, midY + capH/2 - tm.actualBoundingBoxDescent);
+        ctx.shadowBlur = 0;
+    }
+}
+
+window.addEventListener('resize', function(){
+    if(isEnJuego()) requestAnimationFrame(dibujarBarra);
+});
+
+// ─── Firmas y Acta ────────────────────────────────────────────────────────────
+function abrirFirmas(){
+    firStep = 0; firSigns = ['','',''];
+    document.getElementById('modal-firmas').style.display = 'block';
+    setupFirmaCanvas();
+    updateFirmaTit();
+}
+
+function updateFirmaTit(){
+    var n1 = state.nom1||'J1', n2 = state.nom2||'J2';
+    var lbl = [n1, state.arbitro || 'Árbitro', n2][firStep];
+    document.getElementById('f-titulo').innerText = (firStep+1)+'/3 — Firma de: '+lbl;
+}
+
+function nextFirma(){
+    firSigns[firStep] = document.getElementById('cv-firma').toDataURL();
+    firStep++;
+    if(firStep < 3){
+        limpiarFirma();
+        updateFirmaTit();
+    } else {
+        document.getElementById('modal-firmas').style.display = 'none';
+        generarActa();
+    }
+}
+
+function setupFirmaCanvas(){
+    var cv = document.getElementById('cv-firma');
+    cv.width=280; cv.height=200;
+    firCtx = cv.getContext('2d');
+    firCtx.lineWidth=2; firCtx.strokeStyle='black';
+    function gP(e){
+        var r=cv.getBoundingClientRect();
+        var sx=cv.width/r.width, sy=cv.height/r.height;
+        var cx=e.touches?e.touches[0].clientX:e.clientX;
+        var cy=e.touches?e.touches[0].clientY:e.clientY;
+        return {x:(cx-r.left)*sx, y:(cy-r.top)*sy};
+    }
+    cv.ontouchstart=cv.onmousedown=function(e){
+        firDrawing=true; var pp=gP(e); firCtx.beginPath(); firCtx.moveTo(pp.x,pp.y);
+    };
+    cv.ontouchmove=cv.onmousemove=function(e){
+        if(!firDrawing) return; e.preventDefault();
+        var pp=gP(e); firCtx.lineTo(pp.x,pp.y); firCtx.stroke();
+    };
+    cv.ontouchend=cv.onmouseup=function(){ firDrawing=false; };
+}
+
+function limpiarFirma(){
+    if(firCtx) firCtx.clearRect(0,0,280,200);
+}
+
+function generarActa(){
+    var s    = state;
+    var club = s.club || 'Club';
+    var j1   = s.nom1 || 'J1';
+    var j2   = s.nom2 || 'J2';
+    var ent1 = Math.max(1, s.h1 ? s.h1.length : 1);
+    var ent2 = Math.max(1, s.h2 ? s.h2.length : 1);
+
+    function construirFilas(hist){
+        var f='';
+        for(var i=0;i<20;i++){
+            var p1='-',a1='-',p2='-',a2='-';
+            if(hist[i]){
+                p1 = hist[i].p===0 ? '-' : hist[i].p;
+                a1 = hist[i].p===0 ? '-' : hist[i].a;
+            }
+            if(hist[i+20]){
+                p2 = hist[i+20].p===0 ? '-' : hist[i+20].p;
+                a2 = hist[i+20].p===0 ? '-' : hist[i+20].a;
+            }
+            f += '<tr><td class="n">'+(i+1)+'</td><td>'+p1+'</td><td>'+a1+'</td>'+
+                 '<td class="n">'+(i+21)+'</td><td>'+p2+'</td><td>'+a2+'</td></tr>';
+        }
+        return f;
+    }
+
+    var win = window.open('','_blank');
+    if(!win){ alert('Permite las ventanas emergentes'); return; }
+
+    win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'+
+    '<title>Acta '+club+'</title>'+
+    '<style>'+
+    '@media print{.np{display:none!important}@page{margin:.8cm;size:A4 portrait}}'+
+    'body{font-family:"Segoe UI",sans-serif;margin:0;padding:0;color:black}'+
+    '.np{background:#111;padding:14px;text-align:center;display:flex;gap:10px;justify-content:center}'+
+    '.cnt{width:19cm;margin:0 auto;padding:10px}'+
+    'h1{text-align:center;margin:8px 0 4px;font-size:1.7rem;text-transform:uppercase}'+
+    'h2{text-align:center;margin:4px 0 12px;font-size:1.1rem;border-bottom:2px solid black;padding-bottom:4px}'+
+    '.res{display:flex;justify-content:space-between;margin-bottom:14px}'+
+    '.tabs{display:flex;justify-content:space-between;gap:14px}'+
+    '.col{width:49%}'+
+    '.nom{background:#333;color:white;text-align:center;font-weight:bold;padding:5px;font-size:.95rem;text-transform:uppercase}'+
+    'table{width:100%;border-collapse:collapse;font-size:.84rem;margin-bottom:8px}'+
+    'th,td{border:1px solid black;text-align:center;padding:3px}'+
+    'th{background:#f0f0f0;font-weight:bold}'+
+    '.n{background:#f9f9f9;font-weight:bold;width:28px}'+
+    '.fir{display:flex;justify-content:space-between;margin-top:40px}'+
+    '.fb{width:30%;text-align:center;font-size:.78rem;font-weight:bold}'+
+    '.fl{border-top:1px solid black;margin-top:8px;padding-top:4px}'+
+    '.fb img{width:100%;height:65px;object-fit:contain}'+
+    '</style></head><body>'+
+    '<div class="np">'+
+    '<button onclick="window.print()" style="background:#0050cc;color:#fff;border:none;padding:14px 36px;border-radius:8px;font-size:1.1rem;font-weight:700;cursor:pointer;text-transform:uppercase">IMPRIMIR</button>'+
+    '<button onclick="window.close()" style="background:#880808;color:#fff;border:none;padding:14px 30px;border-radius:8px;font-size:1.1rem;font-weight:700;cursor:pointer;text-transform:uppercase">CERRAR</button>'+
+    '</div>'+
+    '<div class="cnt">'+
+    '<h1>'+club+'</h1>'+
+    '<div style="text-align:center;font-size:.88rem;margin-bottom:4px">Fecha: '+new Date().toLocaleDateString('es-ES')+'</div>'+
+    '<h2>ACTA OFICIAL DE COMPETICION</h2>'+
+    '<div class="res">'+
+    '<table style="width:48%"><tr><th>PTS</th><th>ENT</th><th>PROM</th><th>MAX</th></tr>'+
+    '<tr><td>'+s.pts1+'</td><td>'+ent1+'</td><td>'+(s.pts1/ent1).toFixed(3)+'</td><td>'+(s.max1||0)+'</td></tr></table>'+
+    '<table style="width:48%"><tr><th>PTS</th><th>ENT</th><th>PROM</th><th>MAX</th></tr>'+
+    '<tr><td>'+s.pts2+'</td><td>'+ent2+'</td><td>'+(s.pts2/ent2).toFixed(3)+'</td><td>'+(s.max2||0)+'</td></tr></table>'+
+    '</div>'+
+    '<div class="tabs">'+
+    '<div class="col"><div class="nom">'+j1+'</div>'+
+    '<table><thead><tr><th>E</th><th>P</th><th>A</th><th>E</th><th>P</th><th>A</th></tr></thead>'+
+    '<tbody>'+construirFilas(s.h1||[])+'</tbody></table></div>'+
+    '<div class="col"><div class="nom">'+j2+'</div>'+
+    '<table><thead><tr><th>E</th><th>P</th><th>A</th><th>E</th><th>P</th><th>A</th></tr></thead>'+
+    '<tbody>'+construirFilas(s.h2||[])+'</tbody></table></div>'+
+    '</div>'+
+    '<div class="fir">'+
+    '<div class="fb"><img src="'+firSigns[0]+'"><div class="fl">Firma '+j1+'</div></div>'+
+    '<div class="fb"><img src="'+firSigns[1]+'"><div class="fl">'+(s.arbitro||'EL ÁRBITRO')+'</div></div>'+
+    '<div class="fb"><img src="'+firSigns[2]+'"><div class="fl">Firma '+j2+'</div></div>'+
+    '</div></div>'+
+    '<script>window.onload=function(){setTimeout(function(){window.print();},600);};<\/script>'+
+    '</body></html>');
+    win.document.close();
+}
+
+// ─── Arrancar ─────────────────────────────────────────────────────────────────
+connect();
+</script>
+</body>
+</html>
