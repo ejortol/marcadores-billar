@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mando 5 Quillas</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23050a14'/%3E%3Cellipse cx='15' cy='20' rx='4.5' ry='6.5' fill='white'/%3E%3Ccircle cx='15' cy='12' r='4' fill='white'/%3E%3Cellipse cx='49' cy='20' rx='4.5' ry='6.5' fill='white'/%3E%3Ccircle cx='49' cy='12' r='4' fill='white'/%3E%3Cellipse cx='15' cy='50' rx='4.5' ry='6.5' fill='white'/%3E%3Ccircle cx='15' cy='42' r='4' fill='white'/%3E%3Cellipse cx='49' cy='50' rx='4.5' ry='6.5' fill='white'/%3E%3Ccircle cx='49' cy='42' r='4' fill='white'/%3E%3Cellipse cx='32' cy='38' rx='5' ry='7.5' fill='%23dd1e1e'/%3E%3Ccircle cx='32' cy='28.5' r='4.8' fill='%23dd1e1e'/%3E%3C/svg%3E">
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin:0; padding:0; overflow-x:hidden; background:#000; color:white; font-family:sans-serif; touch-action:manipulation; }
+        button,div { -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+        .btn { border:none; padding:20px; border-radius:12px; font-size:1.2rem; font-weight:bold; margin:5px 0; width:100%; color:white; cursor:pointer; }
+        .btn-next { background:#27ae60; }
+        .btn-sec  { background:#222; font-size:0.9rem; }
+
+        #config-panel {
+            position:fixed; inset:0; background:#05070a; z-index:1000;
+            padding:24px 20px; overflow-y:auto;
+            display:flex; flex-direction:column; justify-content:center;
+        }
+        #warmup-panel {
+            position:fixed; inset:0; background:#05070a; z-index:1000;
+            display:none; flex-direction:column; align-items:center;
+            justify-content:center; gap:20px; text-align:center; padding:20px;
+        }
+        #modal-firmas {
+            position:fixed; inset:0; background:#05070a; z-index:1000;
+            padding:20px; overflow-y:auto; display:none;
+        }
+        #game-panel { display:none; padding:10px; }
+
+        input { background:#111; border:1px solid #444; color:white; padding:14px; width:100%; margin:6px 0; text-align:center; border-radius:8px; font-size:1.05rem; }
+        input::placeholder { color:#444; }
+        label.cfg { color:#888; font-size:0.85rem; display:block; margin-top:8px; }
+
+        .canvas-container { background:white; border-radius:15px; overflow:hidden; margin:12px auto; width:100%; max-width:320px; border:4px solid #333; line-height:0; }
+        canvas { background:transparent; touch-action:none; cursor:crosshair; width:100%; height:280px; display:block; }
+
+        .grid-puntos { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:14px 0; }
+        .btn-q { height:78px; border:none; border-radius:12px; font-size:2rem; font-weight:900; color:white; cursor:pointer; }
+        .q2{background:#27ae60;} .q3{background:#f1c40f;color:#000;} .q4{background:#2980b9;}
+        .q7{background:#e67e22;} .q8{background:#c0392b;} .q10{background:#8e44ad;}
+        .q-white{background:#ecf0f1;color:#000;}
+
+        /* ── Banner reconexión ── */
+        #banner-reconex {
+            display:none; position:fixed; inset:0; z-index:9999;
+            background:rgba(0,0,0,0.88); flex-direction:column;
+            align-items:center; justify-content:center; gap:18px; text-align:center;
+        }
+        #banner-reconex.visible { display:flex; }
+        .reconex-spinner {
+            width:56px; height:56px; border:6px solid #333;
+            border-top-color:#ffcc00; border-radius:50%;
+            animation:spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform:rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<!-- CONFIG -->
+<div id="config-panel">
+    <h2 style="color:#ffcc00;margin:0 0 16px;text-align:center;font-size:1.5rem;letter-spacing:1px;">CONFIGURACIÓN — 5 QUILLAS</h2>
+    <label class="cfg">Club</label>
+    <input type="text" id="cfg-club" value="Club Billar" placeholder="Nombre del club">
+    <label class="cfg">Campeonato</label>
+    <input type="text" id="cfg-campeonato" value="" placeholder="Liga / Open...">
+    <label class="cfg">Jugador 1</label>
+    <input type="text" id="cfg-nom1" value="Jugador 1">
+    <label class="cfg">Jugador 2</label>
+    <input type="text" id="cfg-nom2" value="Jugador 2">
+    <label class="cfg">Árbitro / Anotador</label>
+    <input type="text" id="cfg-arbitro" value="" placeholder="Nombre del árbitro">
+    <div style="display:flex;gap:10px;margin-top:4px;">
+        <div style="flex:1"><label class="cfg">Pts por Set</label><input type="number" id="cfg-ptsSet" value="60"></div>
+        <div style="flex:1"><label class="cfg">Nº de Sets</label><input type="number" id="cfg-numSets" value="3"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+        <div style="flex:1"><label class="cfg">Segundos</label><input type="number" id="cfg-segundos" value="40"></div>
+        <div style="flex:1"><label class="cfg">Time Outs</label><input type="number" id="cfg-timeouts" value="3"></div>
+    </div>
+    <button onclick="controlWarmup()" class="btn" style="background:#0066ff;height:62px;font-size:1.1rem;margin-top:16px;">CALENTAMIENTO</button>
+    <button onclick="startPartida()" class="btn"  style="background:#27ae60;height:72px;font-size:1.4rem;margin-top:6px;">▶ EMPEZAR PARTIDA</button>
+    <div id="cfg-status" style="color:#555;text-align:center;margin-top:12px;font-size:0.85rem;">Conectando...</div>
+</div>
+
+<!-- CALENTAMIENTO -->
+<div id="warmup-panel">
+    <div style="font-size:1.3rem;color:#ffcc00;font-weight:bold;" id="warmup-titulo">CALENTAMIENTO J1</div>
+    <div id="warmup-tiempo" style="font-size:5.5rem;font-family:monospace;color:#fff;font-weight:900;letter-spacing:4px;">05:00</div>
+    <button onclick="snd('skip-warmup')" class="btn" style="background:#222;border:1px solid #444;color:#aaa;max-width:300px;padding:12px;font-size:0.9rem;">SALTAR</button>
+    <button id="btn-empezar-cal" onclick="empezarCalentamiento()" class="btn" style="background:#0066ff;max-width:300px;font-size:1.1rem;height:58px;">▶ EMPEZAR 5 MIN</button>
+</div>
+
+<!-- JUEGO -->
+<div id="game-panel">
+    <!-- Banner fin de partida (visible sólo cuando finalizada) -->
+    <div id="mando-fin" style="display:none;background:#1a1200;border:2px solid #ffcc00;border-radius:12px;padding:18px;text-align:center;margin-bottom:12px;">
+        <div style="font-size:1.8rem;">🏆</div>
+        <div style="color:#ffcc00;font-size:1.1rem;font-weight:900;text-transform:uppercase;letter-spacing:2px;">Partida finalizada</div>
+        <div id="mando-fin-ganador" style="color:white;font-size:1.4rem;font-weight:bold;margin-top:4px;"></div>
+        <div id="mando-fin-sets"    style="color:#888;font-size:0.85rem;margin-top:2px;"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;">
+        <div id="box-j1" style="flex:1;background:#1b3d2f;border:3px solid #27ae60;border-radius:12px;padding:12px;text-align:center;">
+            <div id="mando-nom1" style="color:#aaa;font-size:0.75rem;font-weight:bold;text-transform:uppercase;">J1</div>
+            <div id="mando-pts1" style="font-size:3.2rem;font-weight:900;line-height:1;">0</div>
+            <div style="font-size:0.7rem;color:#888;">SETS: <span id="mando-sets1">0</span></div>
+        </div>
+        <div id="box-j2" style="flex:1;background:#2c3e50;border:3px solid transparent;border-radius:12px;padding:12px;text-align:center;">
+            <div id="mando-nom2" style="color:#aaa;font-size:0.75rem;font-weight:bold;text-transform:uppercase;">J2</div>
+            <div id="mando-pts2" style="font-size:3.2rem;font-weight:900;line-height:1;">0</div>
+            <div style="font-size:0.7rem;color:#888;">SETS: <span id="mando-sets2">0</span></div>
+        </div>
+    </div>
+    <div id="scoring-area">
+    <div class="grid-puntos">
+        <button class="btn-q q2"      onclick="snd('plus',2)">2</button>
+        <button class="btn-q q3"      onclick="snd('plus',3)">3</button>
+        <button class="btn-q q4"      onclick="snd('plus',4)">4</button>
+        <button class="btn-q q7"      onclick="snd('plus',7)">7</button>
+        <button class="btn-q q8"      onclick="snd('plus',8)">8</button>
+        <button class="btn-q q10"     onclick="snd('plus',10)">10</button>
+        <button class="btn-q q-white" onclick="snd('plus',12)">12</button>
+        <button class="btn-q q-white" onclick="snd('plus',15)">15</button>
+        <button class="btn-q q-white" onclick="snd('plus',1)">+1</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
+        <button class="btn btn-next" onclick="snd('next')"
+            style="aspect-ratio:1;height:auto;font-size:1.4rem;font-weight:900;border-radius:18px;line-height:1.25;padding:10px 6px;">
+            🔄<br>CAMBIO<br>TURNO
+        </button>
+        <button class="btn btn-sec" onclick="snd('pause')"
+            style="aspect-ratio:1;height:auto;background:#34495e;font-size:1.3rem;font-weight:900;border-radius:18px;line-height:1.25;padding:10px 6px;">
+            ⏸<br>PAUSA /<br>REANUDAR
+        </button>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+        <button class="btn btn-sec"  onclick="snd('to')"   style="flex:1;height:72px;background:#e67e22;font-size:1rem;">TIME OUT</button>
+        <button class="btn btn-sec" onclick="snd('undo')"  style="flex:1;height:72px;background:#555;font-size:0.85rem;">↩ DESHACER</button>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+        <button class="btn btn-sec" onclick="snd('minus',1)" style="flex:1;background:#333;font-size:0.85rem;">− RESTAR J1</button>
+        <button class="btn btn-sec" onclick="snd('minus',2)" style="flex:1;background:#333;font-size:0.85rem;">− RESTAR J2</button>
+    </div>
+    </div><!-- /scoring-area -->
+    <div style="border-top:1px solid #333;margin:12px 0;"></div>
+    <div style="display:flex;gap:10px;">
+        <button class="btn btn-sec" onclick="openFirmas()"  style="flex:1;color:#3498db;font-weight:bold;font-size:0.85rem;">✍ FIRMAS Y ACTA</button>
+        <button class="btn btn-sec" onclick="snd('reset')"  style="flex:1;color:#e74c3c;font-weight:bold;font-size:0.85rem;">⟳ RESET</button>
+    </div>
+</div>
+
+<!-- FIRMAS -->
+<div id="modal-firmas">
+    <h3 id="txt-paso-firma" style="text-align:center;color:#ffcc00;margin-bottom:10px;">Firma</h3>
+    <div class="canvas-container"><canvas id="canv-firma"></canvas></div>
+    <button class="btn btn-sec"  onclick="limpiarCanvas()" style="margin-top:8px;">Limpiar</button>
+    <button id="btn-next-firma" class="btn btn-next" onclick="nextFirma()" style="margin-top:6px;">SIGUIENTE →</button>
+</div>
+
+<!-- BANNER RECONEXIÓN AUTOMÁTICA -->
+<div id="banner-reconex">
+    <div class="reconex-spinner"></div>
+    <div style="color:#ffcc00;font-size:1.3rem;font-weight:bold;">Reconectando...</div>
+    <div style="color:#888;font-size:0.85rem;">La partida se conserva. Por favor, espera.</div>
+    <button onclick="reconnect()" style="margin-top:8px;background:#0066ff;border:none;color:white;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:bold;cursor:pointer;">Reintentar ahora</button>
+</div>
+
+<script>
+let peerConn=null, dataConn=null;
+let state={pts1:0,pts2:0,totalPts1:0,totalPts2:0,turno:1,iniciada:false,setResults:[],sets1:0,sets2:0,segMax:40,numSets:3,to1:3,to2:3};
+let firmaStep=1, firmasSigns=["","",""], canvasCtx, isDrawing=false;
+let forceReload=false, reconnectTimeout=null;
+let connGen=0; /* generación: los eventos de conexiones antiguas se ignoran */
+
+function mostrarBannerReconex(){document.getElementById('banner-reconex').classList.add('visible');}
+function ocultarBannerReconex(){document.getElementById('banner-reconex').classList.remove('visible');}
+
+function reconnect(){
+    clearTimeout(reconnectTimeout);
+    connGen++; /* invalida todos los listeners de la conexión anterior */
+    try{ if(peerConn)peerConn.destroy(); }catch(e){}
+    peerConn=null; dataConn=null;
+    setTimeout(()=>connect(), 600);
+}
+
+function connect(){
+    const code=new URLSearchParams(window.location.search).get('code');
+    if(!code){document.getElementById('cfg-status').innerText='⚠️ Sin código. Escanea el QR.';return;}
+    document.getElementById('cfg-status').innerText='Conectando...';
+    const gen=connGen; /* captura la generación actual para este intento */
+    peerConn=new Peer();
+    peerConn.on('open',()=>{
+        if(gen!==connGen)return; /* esta conexión ya fue superada */
+        dataConn=peerConn.connect('billar-'+code);
+        dataConn.on('open',()=>{
+            if(gen!==connGen)return;
+            document.getElementById('cfg-status').innerText='✅ Conectado';
+            ocultarBannerReconex();
+        });
+        dataConn.on('data',(d)=>{
+            if(gen!==connGen)return;
+            if(d.type==='state'){state=d.state;actualizarInterfazMando(state);}
+            if(d.type==='force_reconnect'){forceReload=true;location.reload();}
+        });
+        dataConn.on('close',()=>{
+            if(gen!==connGen||forceReload)return; /* ignorar si ya hay conexión más nueva */
+            document.getElementById('cfg-status').innerText='⚠️ Desconectado';
+            mostrarBannerReconex();
+            reconnectTimeout=setTimeout(()=>reconnect(),3000);
+        });
+        dataConn.on('error',(e)=>{
+            if(gen!==connGen)return;
+            console.error(e);
+            document.getElementById('cfg-status').innerText='❌ Error de conexión';
+            mostrarBannerReconex();
+            reconnectTimeout=setTimeout(()=>reconnect(),3000);
+        });
+    });
+    peerConn.on('disconnected',()=>{
+        if(gen!==connGen||forceReload)return;
+        mostrarBannerReconex();
+        try{ peerConn.reconnect(); }catch(e){ reconnectTimeout=setTimeout(()=>reconnect(),3000); }
+    });
+    peerConn.on('error',(e)=>{
+        if(gen!==connGen)return;
+        console.error(e);
+        document.getElementById('cfg-status').innerText='❌ Sin conexión';
+        mostrarBannerReconex();
+        reconnectTimeout=setTimeout(()=>reconnect(),4000);
+    });
+}
+
+function startPartida(){
+    state.nom1=document.getElementById('cfg-nom1').value;
+    state.nom2=document.getElementById('cfg-nom2').value;
+    const cfg={
+        club:       document.getElementById('cfg-club').value,
+        campeonato: document.getElementById('cfg-campeonato').value,
+        nom1:state.nom1, nom2:state.nom2,
+        arbitro:    document.getElementById('cfg-arbitro').value,
+        segundos: parseInt(document.getElementById('cfg-segundos').value),
+        segMax:   parseInt(document.getElementById('cfg-segundos').value),
+        ptsSet:   parseInt(document.getElementById('cfg-ptsSet').value),
+        numSets:  parseInt(document.getElementById('cfg-numSets').value),
+        to1:      parseInt(document.getElementById('cfg-timeouts').value),
+        to2:      parseInt(document.getElementById('cfg-timeouts').value),
+        iniciada: true
+    };
+    document.getElementById('config-panel').style.display='none';
+    document.getElementById('game-panel').style.display='block';
+    snd('start',cfg);
+}
+
+function controlWarmup(){
+    if(!state.warmupFase||state.warmupFase===0) snd('warmup',{jugador:1});
+    else snd('skip-warmup');
+}
+
+function actualizarInterfazMando(s){
+    if(!s)return;
+    const esCal=(s.warmupFase>0&&s.iniciada&&s.tiempo>0);
+    const esJuego=s.iniciada&&!esCal&&s.warmupFase===0;
+    document.getElementById('config-panel').style.display=!s.iniciada?'flex':'none';
+    document.getElementById('warmup-panel').style.display='none';
+    document.getElementById('game-panel').style.display='none';
+
+    if(esCal||(s.warmupFase>0&&s.iniciada&&s.pausa)){
+        document.getElementById('warmup-panel').style.display='flex';
+        const min=Math.floor(s.tiempo/60),seg=s.tiempo%60;
+        document.getElementById('warmup-tiempo').innerText=min+':'+(seg<10?'0'+seg:seg);
+        const n=(s.turno===1?s.nom1:s.nom2)||(s.turno===1?'J1':'J2');
+        document.getElementById('warmup-titulo').innerText='CALENTAMIENTO '+n.toUpperCase();
+        document.getElementById('btn-empezar-cal').style.display=s.pausa?'block':'none';
+    } else if(esJuego){
+        document.getElementById('game-panel').style.display='block';
+        document.getElementById('mando-nom1').innerText=s.nom1||'J1';
+        document.getElementById('mando-nom2').innerText=s.nom2||'J2';
+        document.getElementById('mando-pts1').innerText=s.pts1||0;
+        document.getElementById('mando-pts2').innerText=s.pts2||0;
+        document.getElementById('mando-sets1').innerText=s.sets1||0;
+        document.getElementById('mando-sets2').innerText=s.sets2||0;
+        const c1=document.getElementById('box-j1'),c2=document.getElementById('box-j2');
+        if(s.turno===1){c1.style.background='#1b3d2f';c1.style.border='3px solid #27ae60';c2.style.background='#2c3e50';c2.style.border='3px solid transparent';}
+        else{c1.style.background='#2c3e50';c1.style.border='3px solid transparent';c2.style.background='#1b3d2f';c2.style.border='3px solid #27ae60';}
+        /* Fin de partida */
+        const finBanner=document.getElementById('mando-fin');
+        const scoringArea=document.getElementById('scoring-area');
+        if(s.finalizada){
+            const ganador=s.sets1>s.sets2?s.nom1:s.nom2;
+            document.getElementById('mando-fin-ganador').innerText=ganador||'—';
+            document.getElementById('mando-fin-sets').innerText=(s.nom1||'J1')+' '+s.sets1+' — '+s.sets2+' '+(s.nom2||'J2');
+            finBanner.style.display='block';
+            scoringArea.style.opacity='0.25';
+            scoringArea.style.pointerEvents='none';
+        } else {
+            finBanner.style.display='none';
+            scoringArea.style.opacity='1';
+            scoringArea.style.pointerEvents='auto';
+        }
+    }
+}
+
+function snd(cmd,val){if(dataConn&&dataConn.open)dataConn.send({type:'cmd',cmd,val});}
+function empezarCalentamiento(){snd('warmup-start');}
+
+/* FIRMAS */
+function openFirmas(){
+    firmaStep=1;firmasSigns=["","",""];
+    document.getElementById('modal-firmas').style.display='block';
+    setupCanvas();updateTxtFirma();
+}
+function updateTxtFirma(){
+    const n=[state.nom1||"Jugador 1", state.arbitro||"Árbitro", state.nom2||"Jugador 2"];
+    document.getElementById('txt-paso-firma').innerText="Firma de: "+n[firmaStep-1];
+    document.getElementById('btn-next-firma').innerText=firmaStep<3?"SIGUIENTE →":"GENERAR ACTA";
+}
+function nextFirma(){
+    firmasSigns[firmaStep-1]=document.getElementById('canv-firma').toDataURL();
+    if(firmaStep<3){firmaStep++;limpiarCanvas();updateTxtFirma();}
+    else{document.getElementById('modal-firmas').style.display='none';generarActaEnMando();}
+}
+function setupCanvas(){
+    const cv=document.getElementById('canv-firma');
+    cv.width=cv.parentElement.offsetWidth;cv.height=280;
+    canvasCtx=cv.getContext('2d');canvasCtx.lineWidth=3;canvasCtx.strokeStyle="black";canvasCtx.lineCap="round";limpiarCanvas();
+    const gp=(e)=>{const r=cv.getBoundingClientRect();return{x:(e.touches?e.touches[0].clientX:e.clientX)-r.left,y:(e.touches?e.touches[0].clientY:e.clientY)-r.top};};
+    cv.onmousedown=cv.ontouchstart=(e)=>{isDrawing=true;const p=gp(e);canvasCtx.beginPath();canvasCtx.moveTo(p.x,p.y);};
+    cv.onmousemove=cv.ontouchmove=(e)=>{if(!isDrawing)return;e.preventDefault();const p=gp(e);canvasCtx.lineTo(p.x,p.y);canvasCtx.stroke();};
+    cv.onmouseup=cv.ontouchend=()=>isDrawing=false;
+}
+function limpiarCanvas(){if(canvasCtx)canvasCtx.clearRect(0,0,2000,2000);}
+
+/* ACTA */
+function generarActaEnMando(){
+    const s=state;
+    const club      =(document.getElementById('cfg-club')?.value||s.club||"CLUB DE BILLAR").toUpperCase();
+    const campeonato=(document.getElementById('cfg-campeonato')?.value||s.campeonato||"").toUpperCase();
+    const j1=(s.nom1||"JUGADOR A").toUpperCase();
+    const j2=(s.nom2||"JUGADOR B").toUpperCase();
+    const hoy=new Date();
+    const fecha=hoy.toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+    const tp1=(s.totalPts1||0)+s.pts1;
+    const tp2=(s.totalPts2||0)+s.pts2;
+    const prom1=tp2>0?(tp1/tp2).toFixed(3).replace('.',','):(tp1>0?'∞':'—');
+    const prom2=tp1>0?(tp2/tp1).toFixed(3).replace('.',','):(tp2>0?'∞':'—');
+
+    const numSets=Math.max(s.numSets||3,(s.sets1||0)+(s.sets2||0),(s.setResults||[]).length);
+    let setFilas='';
+    for(let i=0;i<numSets;i++){
+        const bg=i%2===0?'#fff':'#f5f5f5';
+        const sr=s.setResults&&s.setResults[i];
+        const g1=sr!=null?sr.p1:'—', g2=sr!=null?sr.p2:'—';
+        const b1=sr&&sr.p1>sr.p2?'font-weight:900;font-size:16pt;':'font-size:14pt;';
+        const b2=sr&&sr.p2>sr.p1?'font-weight:900;font-size:16pt;':'font-size:14pt;';
+        setFilas+=`<tr style="background:${bg};text-align:center;">
+            <td style="border:1px solid #000;padding:9px;font-weight:bold;">${i+1}º SET</td>
+            <td style="border:1px solid #000;padding:9px;${b1}">${g1}</td>
+            <td style="border:1px solid #000;padding:9px;${b2}">${g2}</td>
+        </tr>`;
+    }
+
+    const arb=(s.arbitro||"ÁRBITRO OFICIAL").toUpperCase();
+    const ganTotal=s.sets1>s.sets2?1:(s.sets2>s.sets1?2:0);
+    const ss1=ganTotal===1?'font-weight:900;font-size:22pt;':'font-size:16pt;';
+    const ss2=ganTotal===2?'font-weight:900;font-size:22pt;':'font-size:16pt;';
+
+    const f0=firmasSigns[0]||'';
+    const f1=firmasSigns[1]||'';
+    const f2=firmasSigns[2]||'';
+
+    /* El acta se abre en la misma pestaña como página completa */
+    const actaDoc=`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Acta 5 Quillas</title>
+<style>
+  @page{size:A4 portrait;margin:1.5cm;}
+  *{box-sizing:border-box;font-family:'Helvetica Neue',Arial,sans-serif;}
+  body{background:white;color:#000;margin:0;padding:20px;}
+  .hoja{max-width:17cm;margin:0 auto;}
+  .head{text-align:center;border-bottom:3px solid #000;padding-bottom:14px;margin-bottom:18px;}
+  .club{font-size:22pt;font-weight:900;text-transform:uppercase;margin-bottom:4px;letter-spacing:1px;}
+  .camp{font-size:11pt;font-weight:600;color:#444;}
+  .info-t{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:9pt;}
+  .info-t td{border:1px solid #000;padding:6px 10px;}
+  .lbl{background:#f0f0f0;font-weight:bold;text-transform:uppercase;font-size:8pt;width:20%;}
+  .sc-t{width:100%;border-collapse:collapse;margin-bottom:14px;text-align:center;border:2px solid #000;font-size:10pt;}
+  .sc-t th{background:#000;color:#fff;padding:10px;border:1px solid #000;}
+  .sc-t th:first-child{width:22%;background:#222;}
+  .sc-t td{border:1px solid #000;padding:10px;}
+  .sc-t .tot{background:#e0e0e0;border-top:2px solid #000;}
+  .pr-t{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:9pt;text-align:center;}
+  .pr-t th{background:#333;color:#fff;padding:7px;border:1px solid #000;}
+  .pr-t td{border:1px solid #000;padding:7px;}
+  .firmas{display:flex;justify-content:space-between;margin-top:55px;gap:15px;}
+  .sign{flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;}
+  .sign-img{height:75px;width:100%;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;}
+  .sign-img img{max-height:75px;max-width:100%;object-fit:contain;}
+  .sign-line{border-top:2px solid #000;width:100%;padding-top:5px;}
+  .sign-name{font-size:9pt;font-weight:bold;text-transform:uppercase;}
+  .sign-role{font-size:7.5pt;color:#666;}
+  .btns{display:flex;gap:15px;justify-content:center;margin-top:28px;}
+  .b-print{padding:14px 28px;font-size:15px;font-weight:bold;border:none;cursor:pointer;border-radius:8px;background:#27ae60;color:white;}
+  .b-close{padding:14px 28px;font-size:15px;font-weight:bold;border:none;cursor:pointer;border-radius:8px;background:#c0392b;color:white;}
+  @media print{
+    body{padding:0;margin:0;}
+    .btns{display:none!important;}
+  }
+</style>
+</head>
+<body>
+<div class="hoja">
+  <div class="head">
+    <div class="club">${club}</div>
+    <div class="camp">${campeonato}</div>
+  </div>
+  <table class="info-t">
+    <tr><td class="lbl">FECHA</td><td>${fecha}</td></tr>
+    <tr><td class="lbl">MODALIDAD</td><td>5 Quillas</td></tr>
+  </table>
+  <table class="sc-t">
+    <thead><tr><th>SET</th><th>${j1}</th><th>${j2}</th></tr></thead>
+    <tbody>${setFilas}</tbody>
+    <tfoot>
+      <tr class="tot">
+        <td style="background:#ccc;font-size:10pt;font-weight:bold;padding:9px;">SETS GANADOS</td>
+        <td style="padding:9px;${ss1}">${s.sets1||0}</td>
+        <td style="padding:9px;${ss2}">${s.sets2||0}</td>
+      </tr>
+    </tfoot>
+  </table>
+  <table class="pr-t">
+    <thead><tr>
+      <th style="text-align:left;">JUGADOR</th>
+      <th>PTS TOTALES</th>
+      <th>PROMEDIO (pts / pts rival)</th>
+    </tr></thead>
+    <tbody>
+      <tr><td style="font-weight:bold;text-align:left;">${j1}</td><td>${tp1}</td><td>${prom1}</td></tr>
+      <tr style="background:#f5f5f5;"><td style="font-weight:bold;text-align:left;">${j2}</td><td>${tp2}</td><td>${prom2}</td></tr>
+    </tbody>
+  </table>
+  <div class="firmas">
+    <div class="sign">
+      <div class="sign-img"><img src="${f0}" alt=""></div>
+      <div class="sign-line"><div class="sign-name">${j1}</div><div class="sign-role">(Jugador)</div></div>
+    </div>
+    <div class="sign">
+      <div class="sign-img"><img src="${f1}" alt=""></div>
+      <div class="sign-line"><div class="sign-name">${arb}</div><div class="sign-role">(Árbitro / Anotador)</div></div>
+    </div>
+    <div class="sign">
+      <div class="sign-img"><img src="${f2}" alt=""></div>
+      <div class="sign-line"><div class="sign-name">${j2}</div><div class="sign-role">(Jugador)</div></div>
+    </div>
+  </div>
+  <div class="btns">
+    <button onclick="window.print()" class="b-print">🖨️ IMPRIMIR ACTA</button>
+    <button onclick="window.close()" class="b-close">✕ CERRAR</button>
+  </div>
+</div>
+</body>
+</html>`;
+
+    /* Abrir como nueva pestaña/ventana — HTML completo limpio, sin elementos oscuros */
+    const blob=new Blob([actaDoc],{type:'text/html;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    window.open(url,'_blank');
+}
+
+connect();
+</script>
+</body>
+</html>

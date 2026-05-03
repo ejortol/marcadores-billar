@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<!--
+    Marcador: 5 Quillas
+    Autor: Ernesto Jorge Toledo
+    Fecha de creación: Abril 2026
+    © 2026 Ernesto Jorge Toledo. Todos los derechos reservados.
+-->
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Marcador 5 Quillas</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23050a14'/%3E%3Cdefs%3E%3CradialGradient id='hw' cx='36%25' cy='30%25' r='65%25'%3E%3Cstop offset='0%25' stop-color='%23ffffff'/%3E%3Cstop offset='100%25' stop-color='%23999'/%3E%3C/radialGradient%3E%3ClinearGradient id='bw' x1='0%25' y1='0%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%23bbb'/%3E%3Cstop offset='30%25' stop-color='%23fff'/%3E%3Cstop offset='100%25' stop-color='%23888'/%3E%3C/linearGradient%3E%3CradialGradient id='hr' cx='36%25' cy='30%25' r='65%25'%3E%3Cstop offset='0%25' stop-color='%23ff6060'/%3E%3Cstop offset='100%25' stop-color='%237a0000'/%3E%3C/radialGradient%3E%3ClinearGradient id='br' x1='0%25' y1='0%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%23880000'/%3E%3Cstop offset='30%25' stop-color='%23ee2020'/%3E%3Cstop offset='100%25' stop-color='%23550000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cellipse cx='15' cy='22' rx='5.5' ry='7.5' fill='url(%23bw)'/%3E%3Ccircle cx='15' cy='12' r='5' fill='url(%23hw)'/%3E%3Cellipse cx='49' cy='22' rx='5.5' ry='7.5' fill='url(%23bw)'/%3E%3Ccircle cx='49' cy='12' r='5' fill='url(%23hw)'/%3E%3Cellipse cx='15' cy='52' rx='5.5' ry='7.5' fill='url(%23bw)'/%3E%3Ccircle cx='15' cy='42' r='5' fill='url(%23hw)'/%3E%3Cellipse cx='49' cy='52' rx='5.5' ry='7.5' fill='url(%23bw)'/%3E%3Ccircle cx='49' cy='42' r='5' fill='url(%23hw)'/%3E%3Cellipse cx='32' cy='40' rx='7' ry='9.5' fill='url(%23br)'/%3E%3Ccircle cx='32' cy='28' r='6.5' fill='url(%23hr)'/%3E%3C/svg%3E">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --azul:     #001a5c;
+            --blanco:   #ffffff;
+            --amarillo: #ffcc00;
+            --bg:       #05070a;
+        }
+
+        html {
+            height: 100%; margin: 0; padding: 0;
+        }
+        body {
+            background: var(--bg); color: white;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0; padding: 0 0 82px 0;
+            width: 100%; height: 100vh;
+            display: flex; flex-direction: column;
+            overflow: hidden; box-sizing: border-box;
+        }
+
+        /* ── QR ── */
+        #waitScreen {
+            position: fixed; inset: 0; background: var(--bg);
+            z-index: 10001; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 20px;
+        }
+        .qr-box   { background: white; padding: 20px; border-radius: 15px; border: 4px solid var(--amarillo); }
+        .code-text{ font-size: 3.5rem; color: var(--amarillo); font-weight: 900; letter-spacing: 10px; }
+
+        /* ── CABECERA ── */
+        .header-pro {
+            width: 100%; display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(180deg,#1a1d24,#05070a);
+            padding: 12px 40px; border-bottom: 2px solid #1a1d24;
+            box-sizing: border-box; flex-shrink: 0;
+        }
+        .timer-display { background:#000; border:2px solid #0066ff; border-radius:12px; width:185px; padding:4px; text-align:center; }
+        #display-tiempo { font-size:5rem; font-weight:400; color:var(--amarillo); font-family:monospace; line-height:1; }
+        body.modo-tv .timer-display { width:360px; }
+        body.modo-tv #display-tiempo { font-size:11rem; }
+        body.modo-tv .header-pro { padding:18px 50px; }
+        body.modo-tv #display-club { font-size:2.4rem !important; }
+
+        /* ── CONTENEDOR ── */
+        .contenedor { flex:1; display:flex; flex-direction:column; padding:0 18px; box-sizing:border-box; min-height:0; }
+        .flex-jugadores { display:flex; justify-content:center; gap:18px; flex:1; min-height:0; }
+
+        /* ══════════════════════════════════════════
+           CARDS
+           Fondo uniforme — los hijos heredan color
+        ══════════════════════════════════════════ */
+        .card-jugador {
+            flex:1; border-radius:15px; border:3px solid transparent;
+            transition:all 0.3s ease;
+            display:flex; flex-direction:column; overflow:hidden;
+        }
+
+        /* ── Elementos internos: fondo transparente ── */
+        .nombre-display, .sets-bar, .timeout-dots, .stats-row {
+            background: transparent !important;
+        }
+        .nombre-display {
+            font-size:1.7rem; font-weight:700; text-transform:uppercase;
+            padding:12px 0; border:none; text-align:center; width:100%;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+        }
+        .sets-bar  { font-size:1.5rem; font-weight:bold; padding:5px 0; text-align:center; border-bottom:1px solid rgba(255,255,255,0.12); }
+        .timeout-dots { display:flex; justify-content:center; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.12); }
+        .sets-timeout-row { display:flex; align-items:center; justify-content:space-between; padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.12); }
+        .sets-timeout-row .sets-bar  { border-bottom:none; padding:0; text-align:left; }
+        .sets-timeout-row .timeout-dots { border-bottom:none; padding:0; }
+        .to-dot { width:46px; height:16px; border-radius:8px; border:1px solid rgba(0,0,0,0.2); transition:all 0.3s; }
+        .puntos { flex:1; display:flex; align-items:center; justify-content:center; font-size:9rem; font-weight:900; line-height:1; font-family:Arial,sans-serif; pointer-events:none; }
+        .stats-row { display:flex; justify-content:center; padding:10px; margin-top:auto; }
+        .stat-val   { font-size:1.4rem; font-weight:bold; }
+        .stat-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; opacity:0.65; }
+
+        /* ══════════════════════════════════════
+           TV — 100% RESPONSIVO (clamp escala
+           en cualquier pantalla automáticamente)
+        ══════════════════════════════════════ */
+
+        body.modo-tv .nombre-display {
+            font-size: clamp(2rem, 3.6vw, 5.2rem);
+            padding: clamp(10px,1.4vh,22px) 0;
+        }
+        body.modo-tv .puntos {
+            font-size: clamp(6rem, 13vw, 17rem);
+        }
+        body.modo-tv .stat-val   { font-size: clamp(1.6rem, 3vw, 4.2rem); }
+        body.modo-tv .stat-label { font-size: clamp(0.6rem,0.85vw,1.15rem); letter-spacing:2px; }
+        body.modo-tv .stats-row  { padding: clamp(8px,1.2vh,16px); }
+
+        /* Sets + Timeouts en fila única */
+        body.modo-tv .sets-timeout-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: clamp(5px,0.9vh,12px) clamp(10px,1.5vw,24px);
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+        }
+        body.modo-tv .sets-bar {
+            font-size: clamp(2rem, 3.8vw, 5.2rem);
+            padding: 0; border-bottom: none; text-align: left;
+        }
+        body.modo-tv .timeout-dots {
+            padding: 0; border-bottom: none; gap: clamp(6px,0.8vw,14px);
+        }
+        body.modo-tv .to-dot {
+            width: clamp(28px,3.2vw,58px);
+            height: clamp(10px,1.2vh,22px);
+            border-radius: clamp(5px,0.7vw,11px);
+        }
+
+        /* Cabecera */
+        body.modo-tv .timer-display { width: clamp(180px,16vw,340px); }
+        body.modo-tv #display-tiempo { font-size: clamp(3.5rem,7vw,10rem); }
+        body.modo-tv .header-pro { padding: clamp(10px,1.4vh,20px) clamp(24px,3vw,55px); }
+        body.modo-tv #display-club { font-size: clamp(1.1rem,2vw,2.6rem) !important; }
+        body.modo-tv .tv-url { font-size: clamp(0.7rem,0.95vw,1.2rem) !important; color:#7799ee !important; letter-spacing:1px; }
+
+        /* Timer bar — altura fija, padding-body idéntico = cero hueco */
+        #timer-bar-wrapper { height: 105px; }
+        body { padding-bottom: 105px; }
+        #timer-blocks { padding: 6px 8px; }
+        body.modo-tv #timer-bar-wrapper { height: clamp(105px,12vh,155px); }
+        body.modo-tv { padding-bottom: clamp(105px,12vh,155px); }
+
+        /* ── J1 inactiva: fondo azul marino, texto blanco ── */
+        #tab-1                        { background:var(--azul); border-color:#001040; }
+        #tab-1 .nombre-display        { color:rgba(255,255,255,0.55); border-color:rgba(255,255,255,0.1); }
+        #tab-1 .sets-bar              { color:rgba(255,255,255,0.4);  border-color:rgba(255,255,255,0.1); }
+        #tab-1 .timeout-dots          { border-color:rgba(255,255,255,0.1); }
+        #tab-1 .to-dot                { background:rgba(255,255,255,0.15); }
+        #tab-1 .to-on                 { background:rgba(255,204,0,0.6) !important; box-shadow:none; }
+        #tab-1 .puntos                { color:rgba(255,255,255,0.4); }
+        #tab-1 .stat-val              { color:rgba(255,255,255,0.45); }
+
+        /* ── J2 inactiva: fondo azul marino, texto amarillo ── */
+        #tab-2                        { background:var(--azul); border-color:#001040; }
+        #tab-2 .nombre-display        { color:rgba(255,204,0,0.5); border-color:rgba(255,255,255,0.1); }
+        #tab-2 .sets-bar              { color:rgba(255,204,0,0.4);  border-color:rgba(255,255,255,0.1); }
+        #tab-2 .timeout-dots          { border-color:rgba(255,255,255,0.1); }
+        #tab-2 .to-dot                { background:rgba(255,204,0,0.15); }
+        #tab-2 .to-on                 { background:rgba(255,204,0,0.6) !important; box-shadow:none; }
+        #tab-2 .puntos                { color:rgba(255,204,0,0.4); }
+        #tab-2 .stat-val              { color:rgba(255,204,0,0.45); }
+
+        /* ── J1 ACTIVA: fondo BLANCO, texto AZUL MARINO ── */
+        .card-active-1                    { background:var(--blanco) !important; border-color:#0044cc !important; box-shadow:0 0 40px rgba(0,68,204,0.45) !important; }
+        .card-active-1 .nombre-display    { color:var(--azul) !important; border-color:rgba(0,26,92,0.15) !important; }
+        .card-active-1 .sets-bar          { color:var(--azul) !important; border-color:rgba(0,26,92,0.15) !important; }
+        .card-active-1 .timeout-dots      { border-color:rgba(0,26,92,0.15) !important; }
+        .card-active-1 .to-dot            { background:rgba(0,26,92,0.15) !important; border-color:rgba(0,26,92,0.2) !important; }
+        .card-active-1 .to-on             { background:var(--amarillo) !important; box-shadow:0 0 8px var(--amarillo) !important; border-color:rgba(0,0,0,0.1) !important; }
+        .card-active-1 .puntos            { color:var(--azul) !important; }
+        .card-active-1 .stat-val          { color:var(--azul) !important; }
+        .card-active-1 .stat-label        { color:#4466aa !important; }
+
+        /* ── J2 ACTIVA: fondo AMARILLO, texto AZUL MARINO ── */
+        .card-active-2                    { background:var(--amarillo) !important; border-color:#cc9900 !important; box-shadow:0 0 40px rgba(255,204,0,0.55) !important; }
+        .card-active-2 .nombre-display    { color:var(--azul) !important; border-color:rgba(0,26,92,0.15) !important; }
+        .card-active-2 .sets-bar          { color:var(--azul) !important; border-color:rgba(0,26,92,0.15) !important; }
+        .card-active-2 .timeout-dots      { border-color:rgba(0,26,92,0.15) !important; }
+        .card-active-2 .to-dot            { background:rgba(0,26,92,0.2) !important; border-color:rgba(0,26,92,0.3) !important; }
+        .card-active-2 .to-on             { background:var(--azul) !important; box-shadow:0 0 8px rgba(0,26,92,0.5) !important; border-color:rgba(0,26,92,0.4) !important; }
+        .card-active-2 .puntos            { color:var(--azul) !important; }
+        .card-active-2 .stat-val          { color:var(--azul) !important; }
+        .card-active-2 .stat-label        { color:#334488 !important; }
+
+        /* ══════════════════════════════════════
+           BARRA CRONÓMETRO — pie fijo (grande)
+        ══════════════════════════════════════ */
+        #timer-bar-wrapper {
+            position: fixed; bottom:0; left:0; right:0;
+            height: 82px; background: #000;
+            display: flex; align-items: stretch;
+            z-index: 500; border-top: 3px solid #111;
+        }
+        #timer-blocks {
+            display: flex; width: 100%;
+            padding: 8px 8px; gap: 4px;
+            position: relative;
+        }
+        .t-block { flex:1; border-radius:4px; transition:background-color 0.25s ease; }
+
+        
+        #pausa-label {
+            position: absolute; inset: 0;
+            display: none; align-items: center; justify-content: center;
+            pointer-events: none;
+        }
+        #pausa-label span {
+            color: #fff; font-size: 2rem; font-weight: 900; font-style: italic;
+            letter-spacing: 5px; white-space: nowrap;
+            text-shadow: 0 0 6px #000, 0 0 14px #000, 0 0 28px #000;
+        }
+
+        /* ── Modales ── */
+        #modal-firmas { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); display:none; flex-direction:column; justify-content:center; align-items:center; z-index:10000; }
+        .canvas-container { background:white; border-radius:10px; padding:10px; margin:20px 0; }
+        .canvas-firma { background:white; touch-action:none; cursor:crosshair; width:320px; height:320px; border:1px solid #ccc; }
+        .firma-instruccion { font-size:1.5rem; color:var(--amarillo); margin-bottom:10px; font-weight:bold; }
+        .btn-main { background:#0066ff; color:white; border:none; padding:12px 30px; font-size:1.2rem; font-weight:700; border-radius:50px; cursor:pointer; margin:10px 0; text-transform:uppercase; }
+        .btn-sec  { background:#222; color:#888; border:1px solid #444; padding:12px 20px; border-radius:5px; cursor:pointer; margin:5px; font-size:0.8rem; }
+        #modal-warmup { display:none; position:fixed; inset:0; background:rgba(5,7,10,0.98); z-index:20000; flex-direction:column; align-items:center; justify-content:center; gap:20px; }
+
+        /* ── Fin de partida ── */
+        #modal-fin {
+            display:none; position:fixed; inset:0; z-index:19000;
+            background:rgba(0,0,0,0.92); flex-direction:column;
+            align-items:center; justify-content:center; gap:16px; text-align:center;
+        }
+        #modal-fin.visible { display:flex; }
+        .fin-trofeo { font-size:5rem; }
+        .fin-titulo { font-size:2.2rem; font-weight:900; color:var(--amarillo); letter-spacing:3px; text-transform:uppercase; }
+        .fin-ganador{ font-size:3.5rem; font-weight:900; color:white; text-transform:uppercase; }
+        .fin-sets   { font-size:1.3rem; color:#aaa; margin-top:4px; }
+
+        body.modo-tv button, body.modo-tv input { pointer-events:none !important; }
+        body.modo-tv .btn-main, body.modo-tv .btn-sec { display:none !important; }
+
+        /* ══════════════════════════════════════
+           IMPRESIÓN — ocultar marcador, mostrar acta
+        ══════════════════════════════════════ */
+        #seccion-acta { display:none; }
+
+        @media print {
+            @page { size: A4 portrait; margin: 1.5cm; }
+
+            /* Reset total */
+            html { background: white !important; margin: 0; padding: 0; }
+            body { background: white !important; color: black !important;
+                   margin: 0; padding: 0; display: block !important;
+                   height: auto !important; overflow: visible !important;
+                   width: auto !important; }
+
+            /* Ocultar TODO lo del marcador */
+            .header-pro, .contenedor, #timer-bar-wrapper,
+            #waitScreen, #modal-firmas, #modal-warmup, audio,
+            #main-body > *:not(#seccion-acta) { display: none !important; }
+
+            /* Mostrar sólo el acta */
+            #seccion-acta {
+                display: block !important;
+                position: static !important;
+                width: auto !important; max-width: 100% !important;
+                background: white !important; color: black !important;
+                font-family: Arial, sans-serif;
+            }
+            #seccion-acta * { background: transparent; color: black; }
+            #seccion-acta table, #seccion-acta th, #seccion-acta td { background: revert; color: revert; }
+            #seccion-acta img { display: block !important; }
+        }
+    </style>
+</head>
+<body id="main-body" class="modo-tv">
+
+<!-- FIN DE PARTIDA -->
+<div id="modal-fin">
+    <div class="fin-trofeo">🏆</div>
+    <div class="fin-titulo">Partida finalizada</div>
+    <div class="fin-ganador" id="fin-ganador-nombre">—</div>
+    <div class="fin-sets" id="fin-sets-resultado"></div>
+</div>
+
+<!-- CALENTAMIENTO -->
+<div id="modal-warmup">
+    <div style="font-size:2.5rem;color:var(--amarillo);font-weight:bold;text-transform:uppercase;" id="warmup-title">CALENTAMIENTO J1</div>
+    <div style="font-size:14rem;font-family:monospace;color:white;" id="warmup-timer">05:00</div>
+    <button class="btn-sec" style="font-size:1.4rem;padding:18px 55px;border-radius:10px;" onclick="handleCommand('skip-warmup')">SALTAR</button>
+</div>
+
+<!-- QR -->
+<div id="waitScreen">
+    <svg viewBox="0 0 160 100" width="256" height="160" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="hw" cx="36%" cy="30%" r="65%">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="55%" stop-color="#e0e0e0"/>
+          <stop offset="100%" stop-color="#999"/>
+        </radialGradient>
+        <linearGradient id="bw" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#bbb"/>
+          <stop offset="28%" stop-color="#fff"/>
+          <stop offset="68%" stop-color="#e8e8e8"/>
+          <stop offset="100%" stop-color="#888"/>
+        </linearGradient>
+        <radialGradient id="hr" cx="36%" cy="30%" r="65%">
+          <stop offset="0%" stop-color="#ff6060"/>
+          <stop offset="55%" stop-color="#cc1010"/>
+          <stop offset="100%" stop-color="#7a0000"/>
+        </radialGradient>
+        <linearGradient id="br" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#880000"/>
+          <stop offset="28%" stop-color="#ee2020"/>
+          <stop offset="68%" stop-color="#cc1010"/>
+          <stop offset="100%" stop-color="#550000"/>
+        </linearGradient>
+        <filter id="s"><feDropShadow dx="0" dy="1.5" stdDeviation="1.8" flood-color="rgba(0,0,0,0.55)"/></filter>
+      </defs>
+      <!-- Q superior izquierda — blanca -->
+      <g filter="url(#s)">
+        <ellipse cx="22" cy="31" rx="8.5" ry="11.5" fill="url(#bw)"/>
+        <circle cx="22" cy="16" r="7.5" fill="url(#hw)"/>
+        <ellipse cx="19" cy="13" rx="2.2" ry="1.6" fill="rgba(255,255,255,0.75)"/>
+      </g>
+      <!-- Q superior derecha — blanca -->
+      <g filter="url(#s)">
+        <ellipse cx="138" cy="31" rx="8.5" ry="11.5" fill="url(#bw)"/>
+        <circle cx="138" cy="16" r="7.5" fill="url(#hw)"/>
+        <ellipse cx="135" cy="13" rx="2.2" ry="1.6" fill="rgba(255,255,255,0.75)"/>
+      </g>
+      <!-- Q inferior izquierda — blanca -->
+      <g filter="url(#s)">
+        <ellipse cx="22" cy="79" rx="8.5" ry="11.5" fill="url(#bw)"/>
+        <circle cx="22" cy="64" r="7.5" fill="url(#hw)"/>
+        <ellipse cx="19" cy="61" rx="2.2" ry="1.6" fill="rgba(255,255,255,0.75)"/>
+      </g>
+      <!-- Q inferior derecha — blanca -->
+      <g filter="url(#s)">
+        <ellipse cx="138" cy="79" rx="8.5" ry="11.5" fill="url(#bw)"/>
+        <circle cx="138" cy="64" r="7.5" fill="url(#hw)"/>
+        <ellipse cx="135" cy="61" rx="2.2" ry="1.6" fill="rgba(255,255,255,0.75)"/>
+      </g>
+      <!-- Q central — roja -->
+      <g filter="url(#s)">
+        <ellipse cx="80" cy="63" rx="10.5" ry="14" fill="url(#br)"/>
+        <circle cx="80" cy="46" r="9.5" fill="url(#hr)"/>
+        <ellipse cx="76.5" cy="42.5" rx="2.8" ry="2.1" fill="rgba(255,130,130,0.8)"/>
+      </g>
+    </svg>
+    <div style="font-size:3.8rem;color:var(--amarillo);font-weight:900;letter-spacing:5px;text-transform:uppercase;line-height:1;">5 QUILLAS</div>
+    <div style="font-size:1rem;color:#555;letter-spacing:1px;margin-top:4px;">ESCANEA PARA CONECTAR EL MANDO</div>
+    <div id="displayCode" class="code-text">------</div>
+    <div class="qr-box" id="qrcode"></div>
+    <div style="color:#555;">tenerife3bandas.com</div>
+</div>
+
+<!-- FIRMAS -->
+<div id="modal-firmas">
+    <div class="firma-instruccion" id="txt-paso-firma">Firma del Jugador</div>
+    <div class="canvas-container"><canvas id="canv-firma-unica" class="canvas-firma" width="320" height="320"></canvas></div>
+    <div style="display:flex;gap:10px;">
+        <button class="btn-sec" onclick="limpiarCanvasUnico()">Limpiar</button>
+        <button class="btn-main" id="btn-next-firma" onclick="siguientePasoFirma()" style="margin:0;padding:15px 30px;">SIGUIENTE</button>
+    </div>
+    <button class="btn-sec" onclick="cerrarFirmas()" style="margin-top:40px;color:red;border-color:red;">Cancelar</button>
+</div>
+
+<!-- CABECERA -->
+<div class="header-pro">
+    <div style="flex:1;">
+        <div id="display-club" style="color:#4488ff;font-size:1.5rem;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">CLUB</div>
+        <div class="tv-url" style="font-size:0.85rem;color:#7799ee;letter-spacing:1px;margin-top:3px;">tenerife3bandas.com</div>
+    </div>
+    <div style="flex:1;display:flex;justify-content:center;">
+        <div class="timer-display"><div id="display-tiempo">40</div></div>
+    </div>
+    <div style="flex:1;"></div>
+</div>
+
+<!-- MARCADOR -->
+<div class="contenedor">
+    <div class="flex-jugadores">
+
+        <div id="tab-1" class="card-jugador card-active-1">
+            <input type="text" id="nom-1" class="nombre-display" value="JUGADOR A" readonly>
+            <div class="sets-timeout-row">
+                <div class="sets-bar">SETS: <span id="sets-1">0</span></div>
+                <div class="timeout-dots" id="dots-1">
+                    <div class="to-dot to-on"></div>
+                    <div class="to-dot to-on"></div>
+                    <div class="to-dot to-on"></div>
+                </div>
+            </div>
+            <div id="pts-1" class="puntos">0</div>
+            <div class="stats-row">
+                <div style="text-align:center;">
+                    <div class="stat-label">PROMEDIO</div>
+                    <span class="stat-val" id="prom-1">—</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-2" class="card-jugador">
+            <input type="text" id="nom-2" class="nombre-display" value="JUGADOR B" readonly>
+            <div class="sets-timeout-row">
+                <div class="sets-bar">SETS: <span id="sets-2">0</span></div>
+                <div class="timeout-dots" id="dots-2">
+                    <div class="to-dot to-on"></div>
+                    <div class="to-dot to-on"></div>
+                    <div class="to-dot to-on"></div>
+                </div>
+            </div>
+            <div id="pts-2" class="puntos">0</div>
+            <div class="stats-row">
+                <div style="text-align:center;">
+                    <div class="stat-label">PROMEDIO</div>
+                    <span class="stat-val" id="prom-2">—</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- BARRA CRONÓMETRO -->
+<div id="timer-bar-wrapper">
+    <div id="timer-blocks">
+        <!-- bloques inyectados por JS -->
+        <div id="pausa-label"><span>⏸ PAUSA</span></div>
+    </div>
+</div>
+
+<!-- ACTA (sólo para impresión) -->
+<div id="seccion-acta" style="font-family:Arial,sans-serif;color:#000;background:#fff;max-width:18cm;margin:auto;font-size:9pt;">
+
+    <div style="text-align:center;border-bottom:3px solid #000;padding-bottom:14px;margin-bottom:16px;">
+        <div id="acta-club-nombre" style="font-size:22pt;font-weight:900;text-transform:uppercase;margin-bottom:5px;letter-spacing:1px;">CLUB</div>
+        <div id="acta-campeonato" style="font-size:11pt;font-weight:600;color:#333;"></div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:8.5pt;margin-bottom:14px;">
+        <tr>
+            <td style="border:1px solid #000;padding:5px 8px;background:#f0f0f0;font-weight:bold;text-transform:uppercase;font-size:7.5pt;width:20%;">FECHA</td>
+            <td style="border:1px solid #000;padding:5px 8px;" id="acta-fecha-hoy"></td>
+        </tr>
+        <tr>
+            <td style="border:1px solid #000;padding:5px 8px;background:#f0f0f0;font-weight:bold;text-transform:uppercase;font-size:7.5pt;">MODALIDAD</td>
+            <td style="border:1px solid #000;padding:5px 8px;">5 Quillas</td>
+        </tr>
+    </table>
+
+    <table style="width:100%;border-collapse:collapse;font-size:9.5pt;margin-bottom:14px;text-align:center;border:2px solid #000;">
+        <thead>
+            <tr style="background:#000;color:#fff;">
+                <th style="border:1px solid #000;padding:8px;width:22%;">SET</th>
+                <th style="border:1px solid #000;padding:8px;" id="acta-cab1">J1</th>
+                <th style="border:1px solid #000;padding:8px;" id="acta-cab2">J2</th>
+            </tr>
+        </thead>
+        <tbody id="acta-sets-tbody"></tbody>
+        <tfoot>
+            <tr style="background:#e0e0e0;border-top:2px solid #000;">
+                <td style="border:2px solid #000;padding:9px;font-size:10pt;font-weight:bold;">SETS GANADOS</td>
+                <td style="border:2px solid #000;padding:9px;font-size:18pt;" id="acta-sets1">0</td>
+                <td style="border:2px solid #000;padding:9px;font-size:18pt;" id="acta-sets2">0</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <table style="width:100%;border-collapse:collapse;font-size:8.5pt;margin-bottom:22px;text-align:center;">
+        <thead>
+            <tr style="background:#333;color:#fff;">
+                <th style="border:1px solid #000;padding:5px;text-align:left;">JUGADOR</th>
+                <th style="border:1px solid #000;padding:5px;">PTS TOTALES</th>
+                <th style="border:1px solid #000;padding:5px;">PROMEDIO (pts / pts rival)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="border:1px solid #000;padding:5px;font-weight:bold;text-align:left;" id="acta-n1-txt">J1</td>
+                <td style="border:1px solid #000;padding:5px;" id="sup-pts1">0</td>
+                <td style="border:1px solid #000;padding:5px;" id="sup-pr1">—</td>
+            </tr>
+            <tr style="background:#f5f5f5;">
+                <td style="border:1px solid #000;padding:5px;font-weight:bold;text-align:left;" id="acta-n2-txt">J2</td>
+                <td style="border:1px solid #000;padding:5px;" id="sup-pts2">0</td>
+                <td style="border:1px solid #000;padding:5px;" id="sup-pr2">—</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="display:flex;justify-content:space-between;gap:10px;margin-top:30px;">
+        <div style="flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;">
+            <div style="height:70px;width:100%;display:flex;align-items:flex-end;justify-content:center;">
+                <img id="img-f1" style="max-height:70px;max-width:100%;object-fit:contain;">
+            </div>
+            <div style="border-top:2px solid #000;width:100%;margin-top:6px;padding-top:4px;font-size:8pt;font-weight:bold;" id="acta-firma-n1">JUGADOR 1</div>
+            <div style="font-size:7pt;color:#555;">(Jugador)</div>
+        </div>
+        <div style="flex:1.2;text-align:center;display:flex;flex-direction:column;align-items:center;">
+            <div style="height:70px;width:100%;display:flex;align-items:flex-end;justify-content:center;">
+                <img id="img-farb" style="max-height:70px;max-width:100%;object-fit:contain;">
+            </div>
+            <div style="border-top:2px solid #000;width:100%;margin-top:6px;padding-top:4px;font-size:8pt;font-weight:bold;" id="acta-firma-arb">ÁRBITRO / ANOTADOR</div>
+            <div style="font-size:7pt;color:#555;">(Conformidad)</div>
+        </div>
+        <div style="flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;">
+            <div style="height:70px;width:100%;display:flex;align-items:flex-end;justify-content:center;">
+                <img id="img-f2" style="max-height:70px;max-width:100%;object-fit:contain;">
+            </div>
+            <div style="border-top:2px solid #000;width:100%;margin-top:6px;padding-top:4px;font-size:8pt;font-weight:bold;" id="acta-firma-n2">JUGADOR 2</div>
+            <div style="font-size:7pt;color:#555;">(Jugador)</div>
+        </div>
+    </div>
+
+</div>
+
+<audio id="sonido"><source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg"></audio>
+
+<script>
+let mesaId = new URLSearchParams(window.location.search).get('mesa') || "1";
+
+var state = {
+    pts1:0, pts2:0,
+    totalPts1:0, totalPts2:0,
+    sets1:0, sets2:0,
+    setResults:[],
+    tActual:0,
+    ptsSet:60, numSets:3,
+    turno:1, pausa:true, tiempo:40,
+    nom1:"JUGADOR A", nom2:"JUGADOR B", arbitro:"",
+    club:"Club Billar", campeonato:"",
+    segMax:40, to1:3, to2:3,
+    iniciada:false, warmupFase:0, finalizada:false
+};
+var historialEstados=[], peer=null, connections=[], reloj;
+
+/* ── 40 BLOQUES CRONÓMETRO ── */
+function initTimerBlocks(){
+    const c=document.getElementById('timer-blocks');
+    c.querySelectorAll('.t-block').forEach(b=>b.remove());
+    for(let i=0;i<40;i++){
+        const d=document.createElement('div'); d.className='t-block';
+        c.insertBefore(d,document.getElementById('pausa-label'));
+    }
+}
+
+function renderTimerBlocks(){
+    const c=document.getElementById('timer-blocks'); if(!c)return;
+    const blocks=c.querySelectorAll('.t-block');
+    const ratio=state.segMax>0?state.tiempo/state.segMax:0;
+    const lit=Math.max(0,Math.min(40,Math.round(ratio*40)));
+
+    blocks.forEach((b,i)=>{
+        const on=i<lit;
+        /* colores: rojo 0-9, naranja 10-19, verde 20-39 */
+        if     (i<10) b.style.backgroundColor=on?'#dd1e1e':'#2a0404';
+        else if(i<20) b.style.backgroundColor=on?'#e07a10':'#251500';
+        else          b.style.backgroundColor=on?'#1daa1d':'#041404';
+    });
+
+    const lbl=document.getElementById('pausa-label');
+    if(lbl) lbl.style.display=(state.pausa && state.iniciada)?'flex':'none';
+}
+
+/* ── P2P ── */
+function initP2P(){
+    initTimerBlocks();
+    const code=Math.floor(100000+Math.random()*900000).toString();
+    document.getElementById('displayCode').innerText=code;
+    peer=new Peer('billar-'+code);
+    peer.on('open',()=>{
+        const urlMando=window.location.href.replace('index.html','')+'mando.html?code='+code+'&mesa='+mesaId;
+        document.getElementById("qrcode").innerHTML="";
+        new QRCode(document.getElementById("qrcode"),{text:urlMando,width:220,height:220,correctLevel:QRCode.CorrectLevel.H});
+    });
+    peer.on('connection',(conn)=>{
+        connections.push(conn);
+        document.getElementById('waitScreen').style.display='none';
+        conn.on('data',(d)=>{ if(d.type==='cmd') handleCommand(d.cmd,d.val); });
+        setTimeout(()=>broadcast(),500);
+    });
+}
+
+/* ── COMANDOS ── */
+function handleCommand(cmd,val){
+    if(cmd==='start'){
+        Object.assign(state,val);
+        if(val.segundos) state.segMax=val.segundos;
+        state.turno=1; state.pts1=0; state.pts2=0;
+        state.totalPts1=0; state.totalPts2=0;
+        state.setResults=[];
+        state.tActual=0; state.warmupFase=0; state.finalizada=false;
+        state.segMaxPartida=state.segMax;
+        state.tiempo=state.segMax;
+        state.iniciada=true; state.pausa=true;
+        iniciarReloj();
+        const ws=document.getElementById('waitScreen'); if(ws)ws.style.display='none';
+    }
+
+    /* Bloquear anotación si la partida está terminada */
+    if(state.finalizada && ['plus','minus','next','to','add-manual'].includes(cmd)){
+        render(); broadcast(); return;
+    }
+
+    if(cmd==='plus'){
+        guardarEstado();
+        let pts=(typeof val==='number')?val:1;
+        if(state.turno===1){
+            state.pts1=Math.min(state.pts1+pts, state.ptsSet);
+            state.tActual+=pts;
+        } else {
+            state.pts2=Math.min(state.pts2+pts, state.ptsSet);
+            state.tActual+=pts;
+        }
+        let gan=0;
+        if(state.pts1>=state.ptsSet)      gan=1;
+        else if(state.pts2>=state.ptsSet) gan=2;
+        if(gan>0){
+            document.getElementById('sonido').play();
+            if(gan===1) state.sets1++; else state.sets2++;
+            state.setResults.push({p1:state.pts1,p2:state.pts2});
+            state.totalPts1+=state.pts1; state.totalPts2+=state.pts2;
+            state.pts1=0; state.pts2=0; state.tActual=0; state.pausa=true;
+            /* ¿Alguien ganó la partida? */
+            const setsGanar=Math.ceil(state.numSets/2);
+            if(state.sets1>=setsGanar||state.sets2>=setsGanar){
+                state.finalizada=true;
+            }
+        }
+        state.tiempo=state.segMax;
+        state.pausa=true; /* Pausa automática tras cada anotación */
+    }
+
+    if(cmd==='add-manual'){
+        guardarEstado();
+        let p=(val&&val.puntos)?val.puntos:1; let j=(val&&val.jugador)?val.jugador:1;
+        if(j===1){state.pts1+=p; if(state.turno===1)state.tActual+=p;}
+        else     {state.pts2+=p; if(state.turno===2)state.tActual+=p;}
+        state.tiempo=state.segMax;
+    }
+
+    if(cmd==='to'){
+        if(state.turno===1 && state.to1>0){ state.to1--; state.tiempo=state.segMax; }
+        else if(state.turno===2 && state.to2>0){ state.to2--; state.tiempo=state.segMax; }
+    }
+
+    if(cmd==='warmup'){
+        const j=(val&&val.jugador)?val.jugador:1;
+        state.warmupFase=j; state.turno=j; state.iniciada=true; state.pausa=true;
+        state.segMax=300; state.tiempo=300; iniciarReloj();
+    }
+    if(cmd==='warmup-start'){ state.pausa=false; }
+    if(cmd==='skip-warmup'){
+        if(state.warmupFase===1){state.warmupFase=2;state.turno=2;state.tiempo=300;state.pausa=false;iniciarReloj();}
+        else{state.warmupFase=0;state.segMax=state.segMaxPartida||40;state.tiempo=state.segMax;state.pausa=true;state.iniciada=false;}
+    }
+
+    if(cmd==='minus'){
+        guardarEstado();
+        if(val===1&&state.pts1>0){state.pts1--;if(state.turno===1&&state.tActual>0)state.tActual--;}
+        if(val===2&&state.pts2>0){state.pts2--;if(state.turno===2&&state.tActual>0)state.tActual--;}
+    }
+
+    if(cmd==='next'){
+        guardarEstado();
+        state.tActual=0;
+        state.turno=(state.turno===1)?2:1;
+        state.tiempo=state.segMax; state.pausa=true;
+    }
+
+    if(cmd==='pause') state.pausa=!state.pausa;
+
+    if(cmd==='reset'){
+        state.iniciada=false;
+        connections.forEach(c=>{if(c.open)c.send({type:'force_reconnect'});});
+        setTimeout(()=>location.reload(),500);
+    }
+
+    if(cmd==='undo') deshacerAccion();
+    if(cmd==='print-acta') imprimirActa(val&&val.signs?val.signs:null);
+
+    render(); broadcast();
+}
+
+function iniciarReloj(){
+    if(reloj)clearInterval(reloj);
+    reloj=setInterval(()=>{
+        if(!state.pausa&&state.iniciada){
+            state.tiempo--;
+            if(state.tiempo<=0){state.tiempo=0;document.getElementById('sonido').play();}
+            render(); broadcast();
+        }
+    },1000);
+}
+
+function render(){
+    /* Fin de partida */
+    const modalFin=document.getElementById('modal-fin');
+    if(state.finalizada){
+        const ganador=state.sets1>state.sets2?state.nom1:state.nom2;
+        document.getElementById('fin-ganador-nombre').innerText=ganador||'—';
+        document.getElementById('fin-sets-resultado').innerText=
+            (state.nom1||'J1')+' '+state.sets1+' — '+state.sets2+' '+(state.nom2||'J2');
+        modalFin.classList.add('visible');
+    } else {
+        modalFin.classList.remove('visible');
+    }
+
+    /* Calentamiento */
+    const modal=document.getElementById('modal-warmup');
+    if(state.warmupFase>0&&state.iniciada&&state.tiempo>0){
+        modal.style.display='flex';
+        let min=Math.floor(state.tiempo/60),seg=state.tiempo%60;
+        document.getElementById('warmup-timer').innerText=min+":"+(seg<10?"0"+seg:seg);
+        document.getElementById('warmup-title').innerText="CALENTAMIENTO "+(state.turno===1?state.nom1:state.nom2);
+    } else { if(modal)modal.style.display='none'; }
+
+    /* Marcador */
+    document.getElementById('pts-1').innerText=state.pts1;
+    document.getElementById('pts-2').innerText=state.pts2;
+    document.getElementById('display-tiempo').innerText=state.tiempo;
+    document.getElementById('nom-1').value=state.nom1;
+    document.getElementById('nom-2').value=state.nom2;
+    document.getElementById('display-club').innerText=state.club;
+    document.getElementById('sets-1').innerText=state.sets1||0;
+    document.getElementById('sets-2').innerText=state.sets2||0;
+
+    /* Promedio acumulado */
+    const tp1=(state.totalPts1||0)+state.pts1;
+    const tp2=(state.totalPts2||0)+state.pts2;
+    const p1el=document.getElementById('prom-1');
+    const p2el=document.getElementById('prom-2');
+    if(p1el)p1el.innerText=tp2>0?(tp1/tp2).toFixed(3).replace('.',','):(tp1>0?'∞':'—');
+    if(p2el)p2el.innerText=tp1>0?(tp2/tp1).toFixed(3).replace('.',','):(tp2>0?'∞':'—');
+
+    /* Barra */
+    renderTimerBlocks();
+
+    /* Turno */
+    document.getElementById('tab-1').className=(state.turno===1)?"card-jugador card-active-1":"card-jugador";
+    document.getElementById('tab-2').className=(state.turno===2)?"card-jugador card-active-2":"card-jugador";
+
+    /* Timeouts */
+    for(let i=0;i<3;i++){
+        document.getElementById('dots-1').children[i].className=i<(state.to1||0)?"to-dot to-on":"to-dot";
+        document.getElementById('dots-2').children[i].className=i<(state.to2||0)?"to-dot to-on":"to-dot";
+    }
+}
+
+function guardarEstado(){ historialEstados.push(JSON.stringify(state)); }
+function deshacerAccion(){ if(historialEstados.length>0) state=JSON.parse(historialEstados.pop()); }
+function broadcast(){ connections=connections.filter(c=>c.open); connections.forEach(c=>c.send({type:'state',state:state})); }
+
+/* ── ACTA ── */
+function imprimirActa(signs){
+    const s=state;
+    const hoy=new Date();
+    document.getElementById('acta-club-nombre').innerText=(s.club||'CLUB').toUpperCase();
+    document.getElementById('acta-campeonato').innerText=(s.campeonato||'').toUpperCase();
+    document.getElementById('acta-fecha-hoy').innerText=hoy.toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    document.getElementById('acta-cab1').innerText=(s.nom1||'J1').toUpperCase();
+    document.getElementById('acta-cab2').innerText=(s.nom2||'J2').toUpperCase();
+    document.getElementById('acta-n1-txt').innerText=(s.nom1||'J1').toUpperCase();
+    document.getElementById('acta-n2-txt').innerText=(s.nom2||'J2').toUpperCase();
+    document.getElementById('acta-firma-n1').innerText=(s.nom1||'J1').toUpperCase();
+    document.getElementById('acta-firma-n2').innerText=(s.nom2||'J2').toUpperCase();
+    document.getElementById('acta-firma-arb').innerText=(s.arbitro||'ÁRBITRO / ANOTADOR').toUpperCase();
+
+    const tp1=(s.totalPts1||0)+s.pts1;
+    const tp2=(s.totalPts2||0)+s.pts2;
+    document.getElementById('sup-pts1').innerText=tp1;
+    document.getElementById('sup-pts2').innerText=tp2;
+    document.getElementById('sup-pr1').innerText=tp2>0?(tp1/tp2).toFixed(3).replace('.',','):(tp1>0?'∞':'—');
+    document.getElementById('sup-pr2').innerText=tp1>0?(tp2/tp1).toFixed(3).replace('.',','):(tp2>0?'∞':'—');
+
+    const ganTotal=s.sets1>s.sets2?1:(s.sets2>s.sets1?2:0);
+    const s1el=document.getElementById('acta-sets1');
+    const s2el=document.getElementById('acta-sets2');
+    s1el.innerText=s.sets1||0; s1el.style.fontWeight=ganTotal===1?'900':'400'; s1el.style.fontSize=ganTotal===1?'22pt':'16pt';
+    s2el.innerText=s.sets2||0; s2el.style.fontWeight=ganTotal===2?'900':'400'; s2el.style.fontSize=ganTotal===2?'22pt':'16pt';
+
+    const numSets=Math.max(s.numSets||3,(s.sets1||0)+(s.sets2||0),(s.setResults||[]).length);
+    let filas='';
+    for(let i=0;i<numSets;i++){
+        const bg=i%2===0?'#fff':'#f5f5f5';
+        const sr=s.setResults&&s.setResults[i];
+        const g1=sr!=null?sr.p1:'—', g2=sr!=null?sr.p2:'—';
+        const b1=sr&&sr.p1>sr.p2?'font-weight:900;font-size:15pt;':'';
+        const b2=sr&&sr.p2>sr.p1?'font-weight:900;font-size:15pt;':'';
+        filas+=`<tr style="background:${bg};text-align:center;">
+            <td style="border:1px solid #000;padding:8px;font-weight:bold;">${i+1}º SET</td>
+            <td style="border:1px solid #000;padding:8px;font-size:13pt;${b1}">${g1}</td>
+            <td style="border:1px solid #000;padding:8px;font-size:13pt;${b2}">${g2}</td>
+        </tr>`;
+    }
+    document.getElementById('acta-sets-tbody').innerHTML=filas;
+
+    if(signs){
+        document.getElementById('img-f1').src=signs[0]||'';
+        document.getElementById('img-farb').src=signs[1]||'';
+        document.getElementById('img-f2').src=signs[2]||'';
+    }
+    setTimeout(()=>window.print(),500);
+}
+
+/* ── FIRMAS ── */
+var firmaStep=0, firmasSigns=["","",""], firmaCtx=null, firmaDrawing=false;
+function abrirModalFirmas(){firmaStep=0;firmasSigns=["","",""];document.getElementById('modal-firmas').style.display='flex';setupCanvasFirma();actualizarTextoFirma();}
+function cerrarFirmas(){document.getElementById('modal-firmas').style.display='none';}
+function actualizarTextoFirma(){
+    var n=[state.nom1||"Jugador 1","Árbitro / Anotador",state.nom2||"Jugador 2"];
+    document.getElementById('txt-paso-firma').innerText="Firma de: "+n[firmaStep];
+    document.getElementById('btn-next-firma').innerText=firmaStep<2?"SIGUIENTE →":"GENERAR ACTA";
+}
+function siguientePasoFirma(){
+    var cv=document.getElementById('canv-firma-unica');
+    firmasSigns[firmaStep]=cv.toDataURL();
+    if(firmaStep<2){firmaStep++;limpiarCanvasUnico();actualizarTextoFirma();}
+    else{document.getElementById('modal-firmas').style.display='none';imprimirActa(firmasSigns);}
+}
+function setupCanvasFirma(){
+    var cv=document.getElementById('canv-firma-unica');
+    firmaCtx=cv.getContext('2d');firmaCtx.lineWidth=3;firmaCtx.strokeStyle="#000";firmaCtx.lineCap="round";limpiarCanvasUnico();
+    function gp(e){var r=cv.getBoundingClientRect();return{x:(e.touches?e.touches[0].clientX:e.clientX)-r.left,y:(e.touches?e.touches[0].clientY:e.clientY)-r.top};}
+    cv.onmousedown=cv.ontouchstart=function(e){firmaDrawing=true;var p=gp(e);firmaCtx.beginPath();firmaCtx.moveTo(p.x,p.y);};
+    cv.onmousemove=cv.ontouchmove=function(e){if(!firmaDrawing)return;e.preventDefault();var p=gp(e);firmaCtx.lineTo(p.x,p.y);firmaCtx.stroke();};
+    cv.onmouseup=cv.ontouchend=function(){firmaDrawing=false;};
+}
+function limpiarCanvasUnico(){if(firmaCtx)firmaCtx.clearRect(0,0,2000,2000);}
+
+window.onload=initP2P;
+</script>
+</body>
+</html>
